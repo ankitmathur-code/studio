@@ -8,7 +8,15 @@ import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
-export function AudioPlayer() {
+interface AudioPlayerProps {
+  track: {
+    title: string;
+    artistName: string;
+    audioUrl: string;
+  };
+}
+
+export function AudioPlayer({ track }: AudioPlayerProps) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [isLooping, setIsLooping] = useState(false);
   const [duration, setDuration] = useState(0);
@@ -20,10 +28,13 @@ export function AudioPlayer() {
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   useEffect(() => {
-    // Initial session count from storage
     const stored = sessionStorage.getItem("tuneSpotlightPlays");
     if (stored) setSessionCount(parseInt(stored));
-  }, []);
+    
+    // Reset player when track changes
+    setIsPlaying(false);
+    setCurrentTime(0);
+  }, [track.audioUrl]);
 
   const togglePlay = () => {
     if (audioRef.current) {
@@ -88,16 +99,17 @@ export function AudioPlayer() {
     <div className="w-full max-w-4xl mx-auto p-6 music-glass rounded-2xl shadow-2xl space-y-6">
       <audio
         ref={audioRef}
-        src="https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3"
+        src={track.audioUrl}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleEnded}
+        key={track.audioUrl}
       />
 
       <div className="flex flex-col md:flex-row items-center justify-between gap-6">
         <div className="flex flex-col items-center md:items-start">
-          <h3 className="text-xl font-headline font-bold text-primary glow-primary">NEON DREAMS</h3>
-          <p className="text-muted-foreground">The Synth Wave</p>
+          <h3 className="text-xl font-headline font-bold text-primary glow-primary uppercase tracking-tight">{track.title}</h3>
+          <p className="text-muted-foreground uppercase text-sm tracking-widest">{track.artistName}</p>
         </div>
 
         <div className="flex items-center gap-4">

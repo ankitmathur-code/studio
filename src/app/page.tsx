@@ -8,40 +8,98 @@ import { ShareButton } from "@/components/ShareButton";
 import { VideoEmbed } from "@/components/VideoEmbed";
 import { LyricsSection } from "@/components/LyricsSection";
 import { Toaster } from "@/components/ui/toaster";
-import { Disc3, Music2, TrendingUp } from "lucide-react";
+import { Disc3, Music2, TrendingUp, Loader2, Plus } from "lucide-react";
+import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { doc, setDoc } from "firebase/firestore";
+import { Button } from "@/components/ui/button";
 
 export default function Home() {
+  const firestore = useFirestore();
+
+  // 1. Get global settings to find the featured track ID
+  const settingsRef = useMemoFirebase(() => doc(firestore, "appSettings", "global"), [firestore]);
+  const { data: settings, isLoading: loadingSettings } = useDoc(settingsRef);
+
+  // 2. Get the actual track data
+  const trackRef = useMemoFirebase(
+    () => (settings?.featuredTrackId ? doc(firestore, "tracks", settings.featuredTrackId) : null),
+    [firestore, settings?.featuredTrackId]
+  );
+  const { data: track, isLoading: loadingTrack } = useDoc(trackRef);
+
+  // Helper to initialize sample data if database is empty
+  const initializeData = async () => {
+    const trackId = "neon-dreams-001";
+    const trackData = {
+      id: trackId,
+      title: "Neon Dreams",
+      artistName: "The Synth Wave",
+      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+      videoUrl: "https://drive.google.com/file/d/1pc_I370ceAIwaGUfEuXp9lLtPzR_GSnV/view",
+      lyricsOrNotes: "In the neon dreams, where the rhythm flows...\nVerse 1: Walking through the grid...",
+      creationDate: new Date().toISOString()
+    };
+
+    await setDoc(doc(firestore, "tracks", trackId), trackData);
+    await setDoc(doc(firestore, "appSettings", "global"), {
+      id: "global",
+      featuredTrackId: trackId
+    });
+  };
+
+  if (loadingSettings || loadingTrack) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="h-12 w-12 text-primary animate-spin" />
+      </div>
+    );
+  }
+
+  if (!track) {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center p-6 text-center space-y-6">
+        <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-4">
+          <Music2 className="h-10 w-10 text-muted-foreground" />
+        </div>
+        <h1 className="text-3xl font-headline font-bold">No Featured Track Set</h1>
+        <p className="text-muted-foreground max-w-md">
+          The spotlight is empty! Initialize the database with sample data or add a track in Firestore.
+        </p>
+        <Button onClick={initializeData} className="retro-shadow">
+          <Plus className="mr-2 h-4 w-4" /> Initialize Sample Data
+        </Button>
+      </div>
+    );
+  }
+
   return (
     <main className="min-h-screen bg-background relative overflow-hidden pb-20">
-      {/* Background decoration elements */}
       <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-primary/20 to-transparent pointer-events-none"></div>
       <div className="absolute -top-40 -right-40 w-96 h-96 bg-accent/20 rounded-full blur-[120px] pointer-events-none"></div>
       <div className="absolute top-1/2 -left-40 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
 
       <div className="container mx-auto px-6 relative z-10">
-        {/* Header/Nav */}
         <header className="py-8 flex justify-between items-center animate-fade-in opacity-0">
           <div className="flex items-center gap-2 group">
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center retro-shadow group-hover:rotate-12 transition-transform">
               <Disc3 className="text-white h-6 w-6 animate-spin-slow" />
             </div>
-            <span className="font-headline text-2xl font-bold tracking-tighter">TUNESPOTLIGHT</span>
+            <span className="font-headline text-2xl font-bold tracking-tighter uppercase">TuneSpotlight</span>
           </div>
           <ShareButton />
         </header>
 
-        {/* Hero Section */}
         <section className="py-12 md:py-20 flex flex-col items-center text-center space-y-8 max-w-4xl mx-auto">
           <div className="space-y-4 animate-fade-in opacity-0" style={{ animationDelay: '0.1s' }}>
             <div className="flex items-center justify-center gap-2 text-accent font-mono text-sm tracking-widest uppercase mb-2">
               <TrendingUp className="h-4 w-4" />
-              New Release out now
+              Featured Release
             </div>
-            <h1 className="text-6xl md:text-8xl font-headline font-bold text-white glow-primary leading-none">
-              NEON <span className="text-primary italic">DREAMS</span>
+            <h1 className="text-6xl md:text-8xl font-headline font-bold text-white glow-primary leading-none uppercase">
+              {track.title.split(' ')[0]} <span className="text-primary italic">{track.title.split(' ').slice(1).join(' ')}</span>
             </h1>
-            <h2 className="text-2xl md:text-3xl font-headline text-muted-foreground tracking-tight">
-              THE SYNTH WAVE
+            <h2 className="text-2xl md:text-3xl font-headline text-muted-foreground tracking-tight uppercase">
+              {track.artistName}
             </h2>
           </div>
 
@@ -57,34 +115,32 @@ export default function Home() {
           </div>
         </section>
 
-        {/* Audio Player Section */}
         <section className="py-12 animate-fade-in opacity-0" style={{ animationDelay: '0.3s' }}>
-          <AudioPlayer />
+          <AudioPlayer track={track} />
         </section>
 
-        {/* Video Section */}
-        <section className="py-12 space-y-12">
-           <div className="text-center space-y-4">
-            <h3 className="text-3xl font-headline font-bold flex items-center justify-center gap-3">
-              <Music2 className="text-primary h-8 w-8" />
-              OFFICIAL MUSIC VIDEO
-            </h3>
-            <p className="text-muted-foreground max-w-lg mx-auto">
-              Dive into the neon-soaked world of The Synth Wave. Experience the vision behind the pulse.
-            </p>
-          </div>
-          <div className="max-w-5xl mx-auto">
-            <VideoEmbed />
-          </div>
-        </section>
+        {track.videoUrl && (
+          <section className="py-12 space-y-12">
+             <div className="text-center space-y-4">
+              <h3 className="text-3xl font-headline font-bold flex items-center justify-center gap-3">
+                <Music2 className="text-primary h-8 w-8" />
+                OFFICIAL MUSIC VIDEO
+              </h3>
+              <p className="text-muted-foreground max-w-lg mx-auto">
+                Experience the vision behind the pulse of {track.artistName}.
+              </p>
+            </div>
+            <div className="max-w-5xl mx-auto">
+              <VideoEmbed videoUrl={track.videoUrl} />
+            </div>
+          </section>
+        )}
 
-        {/* Lyrics & Credits */}
-        <LyricsSection />
+        <LyricsSection track={track} />
 
-        {/* Footer */}
         <footer className="mt-20 py-12 border-t border-white/5 text-center text-muted-foreground">
           <p className="font-headline text-sm tracking-widest uppercase">
-            © {new Date().getFullYear()} TuneSpotlight & The Synth Wave
+            © {new Date().getFullYear()} TuneSpotlight & {track.artistName}
           </p>
           <div className="mt-4 flex justify-center gap-6">
             <a href="#" className="hover:text-primary transition-colors">Spotify</a>

@@ -5,7 +5,17 @@ import React from "react";
 import { Music, FileText } from "lucide-react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-export function LyricsSection() {
+interface LyricsSectionProps {
+  track: {
+    lyricsOrNotes: string;
+  };
+}
+
+export function LyricsSection({ track }: LyricsSectionProps) {
+  // Simple splitting of lyrics and notes if they are in the same field
+  // or just showing the field in both tabs for now.
+  const content = track.lyricsOrNotes || "No information provided.";
+
   return (
     <section className="w-full max-w-4xl mx-auto py-12 px-6 animate-fade-in opacity-0" style={{ animationDelay: '0.6s' }}>
       <Tabs defaultValue="lyrics" className="w-full">
@@ -18,49 +28,15 @@ export function LyricsSection() {
           </TabsTrigger>
         </TabsList>
         <TabsContent value="lyrics" className="mt-8 p-8 music-glass rounded-2xl">
-          <div className="space-y-6 text-center text-lg leading-relaxed font-body">
-            <p className="text-primary italic font-headline">Chorus:</p>
-            <p>
-              In the neon dreams, where the rhythm flows,<br />
-              Cyber pulse in the veins, everybody knows.<br />
-              Magenta skies above, purple haze in the street,<br />
-              Retro boom bap sound, feel the heart of the beat.
-            </p>
-            <p className="text-primary italic font-headline">Verse 1:</p>
-            <p>
-              Walking through the grid, shadows long and wide,<br />
-              Nothing but the static on the other side.<br />
-              Old school SP, crunching on the sound,<br />
-              Lost within the circuitry, never to be found.
-            </p>
+          <div className="space-y-6 text-center text-lg leading-relaxed font-body whitespace-pre-line">
+            {content}
           </div>
         </TabsContent>
         <TabsContent value="notes" className="mt-8 p-8 music-glass rounded-2xl">
           <div className="space-y-6">
-            <h4 className="text-2xl font-headline text-primary">PRODUCTION CREDITS</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-muted-foreground">
-              <div className="p-4 bg-white/5 rounded-lg border border-white/10">
-                <p className="text-white font-semibold">Produced by:</p>
-                <p>Digital Soul (The Synth Wave)</p>
-              </div>
-              <div className="p-4 bg-white/5 rounded-lg border border-white/10">
-                <p className="text-white font-semibold">Mixed/Mastered:</p>
-                <p>Boom Bap Studios, NYC</p>
-              </div>
-              <div className="p-4 bg-white/5 rounded-lg border border-white/10">
-                <p className="text-white font-semibold">Gear Used:</p>
-                <p>SP-1200, Juno-106, Reel-to-Reel Tape</p>
-              </div>
-              <div className="p-4 bg-white/5 rounded-lg border border-white/10">
-                <p className="text-white font-semibold">Visuals:</p>
-                <p>RetroTech Collective</p>
-              </div>
-            </div>
-            <p className="text-muted-foreground leading-relaxed">
-              "Neon Dreams" is a love letter to the era of hardware samplers and analog warmth. 
-              We wanted to capture the grit of late-80s boom bap and fuse it with the expansive 
-              textures of modern synthwave. Every drum hit was ran through a vintage 12-bit sampler 
-              to get that authentic crunch.
+            <h4 className="text-2xl font-headline text-primary uppercase">Production Details</h4>
+            <p className="text-muted-foreground leading-relaxed whitespace-pre-line">
+              {content}
             </p>
           </div>
         </TabsContent>
