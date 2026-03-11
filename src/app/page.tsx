@@ -1,7 +1,7 @@
 
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Image from "next/image";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { ShareButton } from "@/components/ShareButton";
@@ -9,7 +9,7 @@ import { VideoEmbed } from "@/components/VideoEmbed";
 import { LyricsSection } from "@/components/LyricsSection";
 import { Toaster } from "@/components/ui/toaster";
 import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save } from "lucide-react";
-import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
+import { useFirestore, useDoc, useMemoFirebase, useAuth, useUser, errorEmitter, FirestorePermissionError, initiateAnonymousSignIn } from "@/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import {
@@ -24,13 +24,22 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { updateDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
   const firestore = useFirestore();
+  const auth = useAuth();
+  const { user } = useUser();
   const { toast } = useToast();
   const [isAdminOpen, setIsAdminOpen] = useState(false);
+
+  // Automatically sign in anonymously so the user has "permissions" to save
+  useEffect(() => {
+    if (!user) {
+      initiateAnonymousSignIn(auth);
+    }
+  }, [user, auth]);
 
   // 1. Get global settings to find the featured track ID
   const settingsRef = useMemoFirebase(() => doc(firestore, "appSettings", "global"), [firestore]);
@@ -78,7 +87,7 @@ export default function Home() {
   };
 
   // Helper to initialize sample data if database is empty
-  const initializeData = async () => {
+  const initializeData = () => {
     const trackId = "neon-dreams-001";
     const trackData = {
       id: trackId,
@@ -90,11 +99,30 @@ export default function Home() {
       creationDate: new Date().toISOString()
     };
 
-    await setDoc(doc(firestore, "tracks", trackId), trackData);
-    await setDoc(doc(firestore, "appSettings", "global"), {
-      id: "global",
-      featuredTrackId: trackId
-    });
+    const newTrackRef = doc(firestore, "tracks", trackId);
+    const newSettingsRef = doc(firestore, "appSettings", "global");
+
+    // We initiate the writes. If they fail due to permissions, the ErrorListener will catch it.
+    setDoc(newTrackRef, trackData)
+      .then(() => {
+        setDoc(newSettingsRef, {
+          id: "global",
+          featuredTrackId: trackId
+        }).catch(async (e) => {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: newSettingsRef.path,
+            operation: 'create',
+            requestResourceData: { id: "global", featuredTrackId: trackId }
+          }));
+        });
+      })
+      .catch(async (e) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path: newTrackRef.path,
+          operation: 'create',
+          requestResourceData: trackData
+        }));
+      });
   };
 
   if (loadingSettings || loadingTrack) {
@@ -129,7 +157,7 @@ export default function Home() {
       <div className="absolute top-1/2 -left-40 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
 
       <div className="container mx-auto px-6 relative z-10">
-        <header className="py-8 flex justify-between items-center animate-fade-in opacity-0">
+        <header className="py-8 flex justify-between items-center">
           <div className="flex items-center gap-2 group">
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center retro-shadow group-hover:rotate-12 transition-transform">
               <Disc3 className="text-white h-6 w-6 animate-spin-slow" />
@@ -145,7 +173,7 @@ export default function Home() {
         </header>
 
         <section className="py-12 md:py-20 flex flex-col items-center text-center space-y-8 max-w-4xl mx-auto">
-          <div className="space-y-4 animate-fade-in opacity-0" style={{ animationDelay: '0.1s' }}>
+          <div className="space-y-4">
             <div className="flex items-center justify-center gap-2 text-accent font-mono text-sm tracking-widest uppercase mb-2">
               <TrendingUp className="h-4 w-4" />
               Featured Release
@@ -158,7 +186,7 @@ export default function Home() {
             </h2>
           </div>
 
-          <div className="relative w-full max-w-md aspect-square rounded-3xl overflow-hidden retro-shadow border-4 border-primary/20 animate-fade-in opacity-0" style={{ animationDelay: '0.2s' }}>
+          <div className="relative w-full max-w-md aspect-square rounded-3xl overflow-hidden retro-shadow border-4 border-primary/20">
              <Image 
                 src="https://picsum.photos/seed/music123/800/800" 
                 alt="Album Cover" 
@@ -170,7 +198,7 @@ export default function Home() {
           </div>
         </section>
 
-        <section className="py-12 animate-fade-in opacity-0" style={{ animationDelay: '0.3s' }}>
+        <section className="py-12">
           <AudioPlayer track={track} />
         </section>
 
