@@ -31,7 +31,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
   const { toast } = useToast();
 
   useEffect(() => {
-    const stored = sessionStorage.getItem("tuneSpotlightPlays");
+    const stored = sessionStorage.getItem("aiSlopHitsPlays");
     if (stored) setSessionCount(parseInt(stored));
     
     // Reset player when track changes
@@ -85,7 +85,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
     setIsPlaying(false);
     const newCount = sessionCount + 1;
     setSessionCount(newCount);
-    sessionStorage.setItem("tuneSpotlightPlays", newCount.toString());
+    sessionStorage.setItem("aiSlopHitsPlays", newCount.toString());
   };
 
   const handleAudioError = () => {

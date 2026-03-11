@@ -1,5 +1,5 @@
 
-# TuneSpotlight Starter
+# AISlopHits Starter
 
 Welcome to your music discovery app!
 

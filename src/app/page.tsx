@@ -145,7 +145,7 @@ export default function Home() {
         <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-4">
           <Music2 className="h-10 w-10 text-muted-foreground" />
         </div>
-        <h1 className="text-3xl font-headline font-bold uppercase tracking-tight">TuneSpotlight Empty</h1>
+        <h1 className="text-3xl font-headline font-bold uppercase tracking-tight">AISlopHits Empty</h1>
         <p className="text-muted-foreground max-w-xs">Welcome! Click the button below to seed your first spotlight track and start the vibes.</p>
         <Button onClick={initializeData} className="retro-shadow">
           <Plus className="mr-2 h-4 w-4" /> Setup Initial Data
@@ -164,7 +164,7 @@ export default function Home() {
             <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center retro-shadow">
               <Disc3 className="text-white h-6 w-6 animate-spin-slow" />
             </div>
-            <span className="font-headline text-2xl font-bold tracking-tighter uppercase">TuneSpotlight</span>
+            <span className="font-headline text-2xl font-bold tracking-tighter uppercase">AISlopHits</span>
           </div>
           <div className="flex gap-4">
             <Button variant="ghost" onClick={openEditDialog} className="text-muted-foreground hover:text-primary gap-2">

@@ -4,7 +4,7 @@ import './globals.css';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
-  title: 'TuneSpotlight | Music Discovery',
+  title: 'AISlopHits | Music Discovery',
   description: 'Promoting the latest tracks and rising artists.',
 };
 
