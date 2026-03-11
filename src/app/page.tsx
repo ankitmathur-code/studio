@@ -8,7 +8,7 @@ import { ShareButton } from "@/components/ShareButton";
 import { VideoEmbed } from "@/components/VideoEmbed";
 import { LyricsSection } from "@/components/LyricsSection";
 import { Toaster } from "@/components/ui/toaster";
-import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save, Image as ImageIcon, LayoutGrid, Sparkles, Trophy } from "lucide-react";
+import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save, Image as ImageIcon, LayoutGrid, Sparkles, Trophy, Database } from "lucide-react";
 import { useFirestore, useDoc, useCollection, useMemoFirebase, useAuth, useUser, initiateAnonymousSignIn, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { doc, collection, query, orderBy } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
@@ -150,7 +150,8 @@ export default function Home() {
     setDocumentNonBlocking(newTrackRef, trackData, { merge: true });
     setDocumentNonBlocking(newSettingsRef, { id: "global", featuredTrackId: trackId }, { merge: true });
     
-    toast({ title: "Initializing Chart Topper", description: "15 Mins Of Now added with 420 plays!" });
+    toast({ title: "Initializing Chart Topper", description: "15 Mins Of Now set to 420 plays!" });
+    setActiveTrackId(trackId);
   };
 
   if (isUserLoading || (loadingAll && !allTracks)) {
@@ -318,6 +319,18 @@ export default function Home() {
           </DialogHeader>
           
           <div className="grid gap-6 py-4">
+            {isAdminOpen && (
+              <div className="bg-accent/10 border border-accent/20 p-4 rounded-xl flex items-center justify-between gap-4 mb-2">
+                <div className="space-y-1">
+                  <h5 className="font-bold text-sm uppercase">Sample Data Reset</h5>
+                  <p className="text-xs text-muted-foreground">Restore the original chart-topper with 420 plays.</p>
+                </div>
+                <Button variant="outline" size="sm" onClick={initializeData} className="border-accent text-accent hover:bg-accent hover:text-white shrink-0">
+                  <Database className="h-3 w-3 mr-2" /> Seed 420 Plays
+                </Button>
+              </div>
+            )}
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="uppercase text-xs font-bold opacity-70">Song Title</Label>
