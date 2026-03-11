@@ -42,6 +42,10 @@
           "type": "string",
           "description": "Additional production notes or stories about the track."
         },
+        "playCount": {
+          "type": "number",
+          "description": "Total number of times this track has been played."
+        },
         "creationDate": {
           "type": "string",
           "description": "The date and time when this track record was created.",

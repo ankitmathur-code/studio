@@ -8,7 +8,7 @@ import { ShareButton } from "@/components/ShareButton";
 import { VideoEmbed } from "@/components/VideoEmbed";
 import { LyricsSection } from "@/components/LyricsSection";
 import { Toaster } from "@/components/ui/toaster";
-import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save, Info, Image as ImageIcon, LayoutGrid, Sparkles } from "lucide-react";
+import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save, Image as ImageIcon, LayoutGrid, Sparkles, Trophy } from "lucide-react";
 import { useFirestore, useDoc, useCollection, useMemoFirebase, useAuth, useUser, initiateAnonymousSignIn, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { doc, collection, query, orderBy } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
@@ -23,9 +23,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
+import { Badge } from "@/components/ui/badge";
 
 export default function Home() {
   const firestore = useFirestore();
@@ -63,6 +63,14 @@ export default function Home() {
   // All Tracks Collection
   const tracksQuery = useMemoFirebase(() => query(collection(firestore, "tracks"), orderBy("creationDate", "desc")), [firestore]);
   const { data: allTracks, isLoading: loadingAll } = useCollection(tracksQuery);
+
+  // Calculate Top Track
+  const topTrackId = React.useMemo(() => {
+    if (!allTracks || allTracks.length === 0) return null;
+    return allTracks.reduce((prev, current) => 
+      (current.playCount || 0) > (prev.playCount || 0) ? current : prev
+    ).id;
+  }, [allTracks]);
 
   const [form, setForm] = useState({
     title: "",
@@ -103,13 +111,13 @@ export default function Home() {
       return;
     }
 
-    // Generate a unique ID manually to satisfy schema
     const tracksRef = collection(firestore, "tracks");
     const newTrackRef = doc(tracksRef);
     
     const newTrack = {
       ...form,
       id: newTrackRef.id,
+      playCount: 0,
       creationDate: new Date().toISOString()
     };
 
@@ -131,6 +139,7 @@ export default function Home() {
       videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
       lyricsOrNotes: "In the neon dreams, where the rhythm flows...",
       linerNotes: "Recorded in a small basement studio.",
+      playCount: 100,
       creationDate: new Date().toISOString()
     };
 
@@ -196,8 +205,15 @@ export default function Home() {
           <>
             <section className="py-12 md:py-20 flex flex-col items-center text-center space-y-8 max-w-4xl mx-auto">
               <div className="space-y-4">
-                <div className="flex items-center justify-center gap-2 text-accent font-mono text-sm tracking-widest uppercase mb-2">
-                  <Sparkles className="h-4 w-4" /> Currently Vibing
+                <div className="flex flex-col items-center gap-3 mb-4">
+                  <div className="flex items-center justify-center gap-2 text-accent font-mono text-sm tracking-widest uppercase">
+                    <Sparkles className="h-4 w-4" /> Currently Vibing
+                  </div>
+                  {activeTrackId === topTrackId && (
+                    <Badge className="bg-yellow-500 text-black font-bold uppercase tracking-tighter flex items-center gap-1.5 animate-pulse rounded-full px-4 py-1">
+                      <Trophy className="h-4 w-4" /> Slop of the Charts
+                    </Badge>
+                  )}
                 </div>
                 <h1 className="text-5xl md:text-8xl font-headline font-bold text-white glow-primary leading-none uppercase">
                   {activeTrack.title}
@@ -207,7 +223,10 @@ export default function Home() {
                 </h2>
               </div>
 
-              <div className="relative w-full max-w-sm aspect-square rounded-3xl overflow-hidden retro-shadow border-4 border-primary/20">
+              <div className={cn(
+                "relative w-full max-w-sm aspect-square rounded-3xl overflow-hidden border-4 transition-all duration-500",
+                activeTrackId === topTrackId ? "retro-shadow border-yellow-500/50 shadow-[0_0_40px_rgba(234,179,8,0.3)]" : "retro-shadow border-primary/20"
+              )}>
                  <Image 
                     src={activeTrack.imageUrl || "https://picsum.photos/seed/music123/800/800"} 
                     alt="Album Cover" 
@@ -247,10 +266,23 @@ export default function Home() {
                   setActiveTrackId(t.id);
                   window.scrollTo({ top: 0, behavior: 'smooth' });
                 }}
-                className={`group cursor-pointer space-y-3 p-3 rounded-2xl transition-all hover:bg-white/5 border border-transparent ${activeTrackId === t.id ? 'border-primary/50 bg-primary/5' : ''}`}
+                className={cn(
+                  "group cursor-pointer space-y-3 p-3 rounded-2xl transition-all hover:bg-white/5 border border-transparent",
+                  activeTrackId === t.id && 'border-primary/50 bg-primary/5',
+                  t.id === topTrackId && 'ring-2 ring-yellow-500/20'
+                )}
               >
                 <div className="relative aspect-square rounded-xl overflow-hidden retro-shadow">
                   <Image src={t.imageUrl || "https://picsum.photos/seed/music123/800/800"} alt={t.title} fill className="object-cover group-hover:scale-105 transition-transform" />
+                  
+                  {t.id === topTrackId && (
+                    <div className="absolute top-2 right-2 z-20">
+                      <Badge className="bg-yellow-500 text-black text-[10px] font-bold px-2 py-0.5 rounded-full">
+                        TOP SLOP
+                      </Badge>
+                    </div>
+                  )}
+
                   {activeTrackId === t.id && (
                     <div className="absolute inset-0 bg-primary/40 flex items-center justify-center">
                       <TrendingUp className="text-white h-8 w-8 animate-bounce" />
@@ -258,8 +290,13 @@ export default function Home() {
                   )}
                 </div>
                 <div>
-                  <h4 className="font-bold truncate group-hover:text-primary transition-colors">{t.title}</h4>
-                  <p className="text-sm text-muted-foreground truncate uppercase">{t.artistName}</p>
+                  <h4 className="font-bold truncate group-hover:text-primary transition-colors flex items-center gap-1.5">
+                    {t.title}
+                  </h4>
+                  <p className="text-sm text-muted-foreground truncate uppercase flex justify-between">
+                    <span>{t.artistName}</span>
+                    <span className="font-mono text-[10px] opacity-60">{t.playCount || 0} PLAYS</span>
+                  </p>
                 </div>
               </div>
             ))}

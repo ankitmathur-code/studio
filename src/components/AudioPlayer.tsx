@@ -2,18 +2,21 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Play, Pause, Repeat, Volume2, VolumeX, SkipBack, SkipForward, AlertCircle, RefreshCcw } from "lucide-react";
+import { Play, Pause, Repeat, Volume2, VolumeX, AlertCircle, RefreshCcw, BarChart3 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { useToast } from "@/hooks/use-toast";
+import { useFirestore, incrementPlayCountNonBlocking } from "@/firebase";
+import { doc } from "firebase/firestore";
 
 interface AudioPlayerProps {
   track: {
+    id: string;
     title: string;
     artistName: string;
     audioUrl: string;
+    playCount?: number;
   };
 }
 
@@ -25,40 +28,36 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
   const [volume, setVolume] = useState(80);
   const [isMuted, setIsMuted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [hasIncremented, setHasIncremented] = useState(false);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  const { toast } = useToast();
+  const firestore = useFirestore();
 
-  // Handle Google Drive links and local paths
+  // Reset state when track changes
+  useEffect(() => {
+    setIsPlaying(false);
+    setCurrentTime(0);
+    setError(null);
+    setHasIncremented(false);
+    if (audioRef.current) {
+      audioRef.current.load();
+    }
+  }, [track.id, track.audioUrl]);
+
   const getCleanAudioUrl = (url: string) => {
     if (!url) return "";
-    
-    // Clean up local paths
     let cleanUrl = url.trim();
     if (cleanUrl.toLowerCase().startsWith("/public/")) {
       cleanUrl = cleanUrl.substring(7);
     }
-
-    // Handle Google Drive links
     if (cleanUrl.includes("drive.google.com")) {
-      // Try to extract ID and convert to direct download stream
       const match = cleanUrl.match(/\/d\/(.+?)\//) || cleanUrl.match(/id=(.+?)(&|$)/);
       if (match && match[1]) {
         return `https://drive.google.com/uc?export=open&id=${match[1]}`;
       }
     }
-    
     return cleanUrl;
   };
-
-  useEffect(() => {
-    setIsPlaying(false);
-    setCurrentTime(0);
-    setError(null);
-    if (audioRef.current) {
-      audioRef.current.load();
-    }
-  }, [track.audioUrl]);
 
   const togglePlay = () => {
     if (audioRef.current) {
@@ -67,9 +66,16 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
       } else {
         audioRef.current.play().catch(e => {
           console.error("Playback failed:", e);
-          setError("Playback failed. If using Google Drive, ensure link is set to 'Anyone with the link' and isn't a restricted file.");
+          setError("Playback failed. Check the URL or file permissions.");
           setIsPlaying(false);
         });
+
+        // Increment play count only once per track load
+        if (!hasIncremented && track.id) {
+          const trackRef = doc(firestore, "tracks", track.id);
+          incrementPlayCountNonBlocking(trackRef);
+          setHasIncremented(true);
+        }
       }
       setIsPlaying(!isPlaying);
     }
@@ -89,7 +95,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
   };
 
   const handleAudioError = () => {
-    setError("Audio could not be loaded. Check the URL or file permissions.");
+    setError("Audio could not be loaded. Check the URL path.");
     setIsPlaying(false);
   };
 
@@ -169,10 +175,14 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
           </div>
         </div>
 
-        <div className="hidden md:block">
-           <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 font-mono">
-            V1.0.0 ENGINE
+        <div className="hidden md:flex flex-col items-end gap-1">
+          <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 font-mono">
+            V1.1.0 ANALYTICS
           </Badge>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono uppercase">
+            <BarChart3 className="h-3 w-3" />
+            {track.playCount || 0} PLAYS
+          </div>
         </div>
       </div>
 

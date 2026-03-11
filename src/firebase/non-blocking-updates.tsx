@@ -1,3 +1,4 @@
+
 'use client';
     
 import {
@@ -5,6 +6,7 @@ import {
   addDoc,
   updateDoc,
   deleteDoc,
+  increment,
   CollectionReference,
   DocumentReference,
   SetOptions,
@@ -65,6 +67,22 @@ export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) 
           path: docRef.path,
           operation: 'update',
           requestResourceData: data,
+        })
+      )
+    });
+}
+
+/**
+ * Specifically increments the play count of a track.
+ */
+export function incrementPlayCountNonBlocking(docRef: DocumentReference) {
+  updateDoc(docRef, { playCount: increment(1) })
+    .catch(error => {
+      errorEmitter.emit(
+        'permission-error',
+        new FirestorePermissionError({
+          path: docRef.path,
+          operation: 'update',
         })
       )
     });
