@@ -12,6 +12,7 @@ import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save, Image as Ima
 import { useFirestore, useDoc, useCollection, useMemoFirebase, useAuth, useUser, initiateAnonymousSignIn, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { doc, collection, query, orderBy } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
 import {
   Dialog,
   DialogContent,
