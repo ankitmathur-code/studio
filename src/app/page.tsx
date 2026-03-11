@@ -8,8 +8,8 @@ import { ShareButton } from "@/components/ShareButton";
 import { VideoEmbed } from "@/components/VideoEmbed";
 import { LyricsSection } from "@/components/LyricsSection";
 import { Toaster } from "@/components/ui/toaster";
-import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save, Info } from "lucide-react";
-import { useFirestore, useDoc, useMemoFirebase, useAuth, useUser, errorEmitter, FirestorePermissionError, initiateAnonymousSignIn } from "@/firebase";
+import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save, Info, Image as ImageIcon } from "lucide-react";
+import { useFirestore, useDoc, useMemoFirebase, useAuth, useUser, initiateAnonymousSignIn } from "@/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import {
@@ -18,14 +18,13 @@ import {
   DialogDescription,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
   DialogFooter,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { updateDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
@@ -35,41 +34,41 @@ export default function Home() {
   const { toast } = useToast();
   const [isAdminOpen, setIsAdminOpen] = useState(false);
 
-  // Automatically sign in anonymously
   useEffect(() => {
     if (!user) {
       initiateAnonymousSignIn(auth);
     }
   }, [user, auth]);
 
-  // 1. Get global settings
   const settingsRef = useMemoFirebase(() => doc(firestore, "appSettings", "global"), [firestore]);
   const { data: settings, isLoading: loadingSettings } = useDoc(settingsRef);
 
-  // 2. Get the actual track data
   const trackRef = useMemoFirebase(
     () => (settings?.featuredTrackId ? doc(firestore, "tracks", settings.featuredTrackId) : null),
     [firestore, settings?.featuredTrackId]
   );
   const { data: track, isLoading: loadingTrack } = useDoc(trackRef);
 
-  // Form State
   const [editForm, setEditForm] = useState({
     title: "",
     artistName: "",
     audioUrl: "",
+    imageUrl: "",
     videoUrl: "",
-    lyricsOrNotes: ""
+    lyricsOrNotes: "",
+    linerNotes: ""
   });
 
   const openEditDialog = () => {
     if (track) {
       setEditForm({
-        title: track.title,
-        artistName: track.artistName,
-        audioUrl: track.audioUrl,
+        title: track.title || "",
+        artistName: track.artistName || "",
+        audioUrl: track.audioUrl || "",
+        imageUrl: track.imageUrl || "https://picsum.photos/seed/music123/800/800",
         videoUrl: track.videoUrl || "",
-        lyricsOrNotes: track.lyricsOrNotes || ""
+        lyricsOrNotes: track.lyricsOrNotes || "",
+        linerNotes: track.linerNotes || ""
       });
     }
     setIsAdminOpen(true);
@@ -77,27 +76,22 @@ export default function Home() {
 
   const handleSave = () => {
     if (trackRef) {
-      let cleanedUrl = editForm.audioUrl.trim();
-      
-      // Case-insensitive check for /public/
-      if (cleanedUrl.toLowerCase().startsWith("/public/")) {
-        cleanedUrl = cleanedUrl.substring(7);
-      } else if (cleanedUrl.toLowerCase().startsWith("public/")) {
-        cleanedUrl = "/" + cleanedUrl.substring(7);
+      let cleanedAudioUrl = editForm.audioUrl.trim();
+      if (cleanedAudioUrl.toLowerCase().startsWith("/public/")) {
+        cleanedAudioUrl = cleanedAudioUrl.substring(7);
+      } else if (cleanedAudioUrl.toLowerCase().startsWith("public/")) {
+        cleanedAudioUrl = "/" + cleanedAudioUrl.substring(7);
+      }
+      if (!cleanedAudioUrl.startsWith("http") && !cleanedAudioUrl.startsWith("/")) {
+        cleanedAudioUrl = "/" + cleanedAudioUrl;
       }
 
-      // Final cleanup: ensure it starts with / and remove any double slashes
-      if (!cleanedUrl.startsWith("http")) {
-        if (!cleanedUrl.startsWith("/")) cleanedUrl = "/" + cleanedUrl;
-        cleanedUrl = cleanedUrl.replace(/\/+/g, '/');
-      }
-
-      const finalData = { ...editForm, audioUrl: cleanedUrl };
+      const finalData = { ...editForm, audioUrl: cleanedAudioUrl };
 
       updateDocumentNonBlocking(trackRef, finalData);
       toast({
         title: "Spotlight Updated",
-        description: `Now pointing to: ${cleanedUrl}`,
+        description: "The spotlight has been refreshed with your changes.",
       });
       setIsAdminOpen(false);
     }
@@ -110,8 +104,10 @@ export default function Home() {
       title: "Neon Dreams",
       artistName: "The Synth Wave",
       audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
+      imageUrl: "https://picsum.photos/seed/music123/800/800",
       videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
       lyricsOrNotes: "In the neon dreams, where the rhythm flows...",
+      linerNotes: "Recorded in a small basement studio during a summer rainstorm.",
       creationDate: new Date().toISOString()
     };
 
@@ -179,7 +175,7 @@ export default function Home() {
 
           <div className="relative w-full max-w-md aspect-square rounded-3xl overflow-hidden retro-shadow border-4 border-primary/20">
              <Image 
-                src="https://picsum.photos/seed/music123/800/800" 
+                src={track.imageUrl || "https://picsum.photos/seed/music123/800/800"} 
                 alt="Album Cover" 
                 fill 
                 className="object-cover"
@@ -202,19 +198,17 @@ export default function Home() {
       </div>
 
       <Dialog open={isAdminOpen} onOpenChange={setIsAdminOpen}>
-        <DialogContent className="max-w-2xl music-glass border-primary/20 text-foreground">
+        <DialogContent className="max-w-2xl music-glass border-primary/20 text-foreground overflow-y-auto max-h-[90vh]">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-headline font-bold text-primary uppercase">Spotlight Settings</DialogTitle>
-            <DialogDescription>Configure the featured song and audio path.</DialogDescription>
+            <div className="text-2xl font-headline font-bold text-primary uppercase">Spotlight Settings</div>
+            <DialogDescription>Configure the featured song, image, and notes.</DialogDescription>
           </DialogHeader>
           
           <Alert className="bg-primary/10 border-primary/30 text-primary-foreground mb-4">
             <Info className="h-4 w-4" />
-            <AlertTitle className="font-bold uppercase text-xs">Troubleshooting Guide</AlertTitle>
+            <AlertTitle className="font-bold uppercase text-xs">File Tip</AlertTitle>
             <AlertDescription className="text-xs opacity-90">
-              1. Create a folder exactly named <code className="bg-black/40 px-1 rounded">public</code> (lowercase).<br/>
-              2. Put your MP3 inside it.<br/>
-              3. If file is <code className="bg-black/40 px-1 rounded">public/vibes.mp3</code>, the URL below must be <code className="bg-black/40 px-1 rounded">/vibes.mp3</code>.
+              For files in the <code className="bg-black/40 px-1 rounded">public</code> folder, use paths like <code className="bg-black/40 px-1 rounded">/my-file.mp3</code> or <code className="bg-black/40 px-1 rounded">/cover.jpg</code>.
             </AlertDescription>
           </Alert>
 
@@ -229,22 +223,46 @@ export default function Home() {
                 <Input value={editForm.artistName} onChange={(e) => setEditForm({...editForm, artistName: e.target.value})} className="bg-black/20" />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label className="uppercase text-xs font-bold opacity-70 text-accent">Audio URL (e.g. /Monks_Tempo.mp3)</Label>
-              <Input 
-                value={editForm.audioUrl} 
-                onChange={(e) => setEditForm({...editForm, audioUrl: e.target.value})}
-                placeholder="/mysong.mp3"
-                className="bg-black/20 border-accent/30" 
-              />
+            
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label className="uppercase text-xs font-bold opacity-70 text-accent flex items-center gap-2">
+                  <Music2 className="h-3 w-3" /> Audio URL
+                </Label>
+                <Input 
+                  value={editForm.audioUrl} 
+                  onChange={(e) => setEditForm({...editForm, audioUrl: e.target.value})}
+                  placeholder="/mysong.mp3"
+                  className="bg-black/20 border-accent/30" 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label className="uppercase text-xs font-bold opacity-70 flex items-center gap-2">
+                  <ImageIcon className="h-3 w-3" /> Image URL/Path
+                </Label>
+                <Input 
+                  value={editForm.imageUrl} 
+                  onChange={(e) => setEditForm({...editForm, imageUrl: e.target.value})}
+                  placeholder="/cover.jpg"
+                  className="bg-black/20" 
+                />
+              </div>
             </div>
+
             <div className="space-y-2">
-              <Label className="uppercase text-xs font-bold opacity-70">Video Link (YouTube/Drive)</Label>
+              <Label className="uppercase text-xs font-bold opacity-70">Video Link (YouTube)</Label>
               <Input value={editForm.videoUrl} onChange={(e) => setEditForm({...editForm, videoUrl: e.target.value})} className="bg-black/20" />
             </div>
-            <div className="space-y-2">
-              <Label className="uppercase text-xs font-bold opacity-70">Lyrics</Label>
-              <Textarea value={editForm.lyricsOrNotes} onChange={(e) => setEditForm({...editForm, lyricsOrNotes: e.target.value})} rows={4} className="bg-black/20" />
+
+            <div className="grid grid-cols-1 gap-4">
+              <div className="space-y-2">
+                <Label className="uppercase text-xs font-bold opacity-70">Lyrics</Label>
+                <Textarea value={editForm.lyricsOrNotes} onChange={(e) => setEditForm({...editForm, lyricsOrNotes: e.target.value})} rows={3} className="bg-black/20" />
+              </div>
+              <div className="space-y-2">
+                <Label className="uppercase text-xs font-bold opacity-70">Liner Notes</Label>
+                <Textarea value={editForm.linerNotes} onChange={(e) => setEditForm({...editForm, linerNotes: e.target.value})} rows={3} className="bg-black/20" placeholder="Tell the story behind the song..." />
+              </div>
             </div>
           </div>
           <DialogFooter>
