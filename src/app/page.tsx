@@ -8,7 +8,7 @@ import { ShareButton } from "@/components/ShareButton";
 import { VideoEmbed } from "@/components/VideoEmbed";
 import { LyricsSection } from "@/components/LyricsSection";
 import { Toaster } from "@/components/ui/toaster";
-import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save, Image as ImageIcon, LayoutGrid, Sparkles, Trophy, Database, Trash2, Zap } from "lucide-react";
+import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save, Image as ImageIcon, LayoutGrid, Sparkles, Trophy, Trash2, Zap } from "lucide-react";
 import { useFirestore, useDoc, useCollection, useMemoFirebase, useAuth, useUser, initiateAnonymousSignIn, setDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { doc, collection, query, orderBy } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
@@ -144,7 +144,7 @@ export default function Home() {
       id: trackId,
       title: "15 Mins Of Now",
       artistName: "Ankit Mathur | The Monks AI Slop",
-      audioUrl: "/Monks_Tempo.mp3",
+      audioUrl: "https://drive.google.com/uc?export=open&id=1O-FEBu4tJ86qc-217dssVADOP2oas8FV",
       imageUrl: "https://picsum.photos/seed/monks/800/800",
       videoUrl: "",
       lyricsOrNotes: "Testing if it blends with the other slops...",
@@ -261,7 +261,7 @@ export default function Home() {
           </>
         )}
 
-        {/* The Slop Manifesto / About Section */}
+        {/* The Slop Manifesto */}
         <section className="py-16 px-6 bg-primary/5 rounded-3xl border border-primary/20 music-glass my-12 text-center space-y-8">
           <div className="flex justify-center mb-4">
              <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center retro-shadow">
