@@ -9,7 +9,7 @@ import { VideoEmbed } from "@/components/VideoEmbed";
 import { LyricsSection } from "@/components/LyricsSection";
 import { Toaster } from "@/components/ui/toaster";
 import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save, Info, Image as ImageIcon, LayoutGrid, Sparkles } from "lucide-react";
-import { useFirestore, useDoc, useCollection, useMemoFirebase, useAuth, useUser, initiateAnonymousSignIn, setDocumentNonBlocking, updateDocumentNonBlocking, addDocumentNonBlocking } from "@/firebase";
+import { useFirestore, useDoc, useCollection, useMemoFirebase, useAuth, useUser, initiateAnonymousSignIn, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
 import { doc, collection, query, orderBy } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import {
@@ -103,13 +103,17 @@ export default function Home() {
       return;
     }
 
+    // Generate a unique ID manually to satisfy schema
+    const tracksRef = collection(firestore, "tracks");
+    const newTrackRef = doc(tracksRef);
+    
     const newTrack = {
       ...form,
+      id: newTrackRef.id,
       creationDate: new Date().toISOString()
     };
 
-    const tracksRef = collection(firestore, "tracks");
-    addDocumentNonBlocking(tracksRef, newTrack);
+    setDocumentNonBlocking(newTrackRef, newTrack, { merge: false });
     
     toast({ title: "Slop Submitted!", description: "Your track has been added to the gallery." });
     setIsSubmitOpen(false);

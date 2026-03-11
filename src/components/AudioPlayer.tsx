@@ -29,15 +29,26 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
 
-  // Handle Google Drive links
+  // Handle Google Drive links and local paths
   const getCleanAudioUrl = (url: string) => {
-    if (url.includes("drive.google.com")) {
-      // Convert view link to a direct-ish stream link if possible, 
-      // though browser support varies for Drive audio embedding.
-      // Best approach for Drive is the /view -> /preview swap
-      return url.replace("/view", "/preview");
+    if (!url) return "";
+    
+    // Clean up local paths
+    let cleanUrl = url.trim();
+    if (cleanUrl.toLowerCase().startsWith("/public/")) {
+      cleanUrl = cleanUrl.substring(7);
     }
-    return url;
+
+    // Handle Google Drive links
+    if (cleanUrl.includes("drive.google.com")) {
+      // Try to extract ID and convert to direct download stream
+      const match = cleanUrl.match(/\/d\/(.+?)\//) || cleanUrl.match(/id=(.+?)(&|$)/);
+      if (match && match[1]) {
+        return `https://drive.google.com/uc?export=open&id=${match[1]}`;
+      }
+    }
+    
+    return cleanUrl;
   };
 
   useEffect(() => {
@@ -56,7 +67,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
       } else {
         audioRef.current.play().catch(e => {
           console.error("Playback failed:", e);
-          setError("Playback failed. If using Google Drive, ensure link is set to 'Anyone with the link'.");
+          setError("Playback failed. If using Google Drive, ensure link is set to 'Anyone with the link' and isn't a restricted file.");
           setIsPlaying(false);
         });
       }
@@ -78,7 +89,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
   };
 
   const handleAudioError = () => {
-    setError("Audio could not be loaded.");
+    setError("Audio could not be loaded. Check the URL or file permissions.");
     setIsPlaying(false);
   };
 
