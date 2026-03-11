@@ -8,7 +8,7 @@ import { ShareButton } from "@/components/ShareButton";
 import { VideoEmbed } from "@/components/VideoEmbed";
 import { LyricsSection } from "@/components/LyricsSection";
 import { Toaster } from "@/components/ui/toaster";
-import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save } from "lucide-react";
+import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save, Info } from "lucide-react";
 import { useFirestore, useDoc, useMemoFirebase, useAuth, useUser, errorEmitter, FirestorePermissionError, initiateAnonymousSignIn } from "@/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
@@ -24,6 +24,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { updateDocumentNonBlocking, setDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useToast } from "@/hooks/use-toast";
 
@@ -34,14 +35,14 @@ export default function Home() {
   const { toast } = useToast();
   const [isAdminOpen, setIsAdminOpen] = useState(false);
 
-  // Automatically sign in anonymously so the user has "permissions" to save
+  // Automatically sign in anonymously
   useEffect(() => {
     if (!user) {
       initiateAnonymousSignIn(auth);
     }
   }, [user, auth]);
 
-  // 1. Get global settings to find the featured track ID
+  // 1. Get global settings
   const settingsRef = useMemoFirebase(() => doc(firestore, "appSettings", "global"), [firestore]);
   const { data: settings, isLoading: loadingSettings } = useDoc(settingsRef);
 
@@ -52,7 +53,7 @@ export default function Home() {
   );
   const { data: track, isLoading: loadingTrack } = useDoc(trackRef);
 
-  // Form State for editing
+  // Form State
   const [editForm, setEditForm] = useState({
     title: "",
     artistName: "",
@@ -61,7 +62,6 @@ export default function Home() {
     lyricsOrNotes: ""
   });
 
-  // Initialize form when track loads or dialog opens
   const openEditDialog = () => {
     if (track) {
       setEditForm({
@@ -77,32 +77,32 @@ export default function Home() {
 
   const handleSave = () => {
     if (trackRef) {
-      // Babysitting: Strip /public/ or /Public/ if entered by mistake
-      // Users often think they need to include the folder name in the URL.
       let cleanedUrl = editForm.audioUrl.trim();
+      
+      // Case-insensitive check for /public/
       if (cleanedUrl.toLowerCase().startsWith("/public/")) {
-        cleanedUrl = cleanedUrl.substring(7); // remove /public
+        cleanedUrl = cleanedUrl.substring(7);
       } else if (cleanedUrl.toLowerCase().startsWith("public/")) {
-        cleanedUrl = "/" + cleanedUrl.substring(7); // change public/ to /
+        cleanedUrl = "/" + cleanedUrl.substring(7);
       }
 
-      // Ensure it starts with a slash if it's a local file
-      if (!cleanedUrl.startsWith("http") && !cleanedUrl.startsWith("/")) {
-        cleanedUrl = "/" + cleanedUrl;
+      // Final cleanup: ensure it starts with / and remove any double slashes
+      if (!cleanedUrl.startsWith("http")) {
+        if (!cleanedUrl.startsWith("/")) cleanedUrl = "/" + cleanedUrl;
+        cleanedUrl = cleanedUrl.replace(/\/+/g, '/');
       }
 
       const finalData = { ...editForm, audioUrl: cleanedUrl };
 
       updateDocumentNonBlocking(trackRef, finalData);
       toast({
-        title: "Track Updated",
-        description: `The spotlight is now set to ${cleanedUrl}.`,
+        title: "Spotlight Updated",
+        description: `Now pointing to: ${cleanedUrl}`,
       });
       setIsAdminOpen(false);
     }
   };
 
-  // Helper to initialize sample data if database is empty
   const initializeData = () => {
     const trackId = "neon-dreams-001";
     const trackData = {
@@ -110,34 +110,16 @@ export default function Home() {
       title: "Neon Dreams",
       artistName: "The Synth Wave",
       audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-      videoUrl: "https://drive.google.com/file/d/1pc_I370ceAIwaGUfEuXp9lLtPzR_GSnV/view",
-      lyricsOrNotes: "In the neon dreams, where the rhythm flows...\nVerse 1: Walking through the grid...",
+      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
+      lyricsOrNotes: "In the neon dreams, where the rhythm flows...",
       creationDate: new Date().toISOString()
     };
 
     const newTrackRef = doc(firestore, "tracks", trackId);
     const newSettingsRef = doc(firestore, "appSettings", "global");
 
-    setDoc(newTrackRef, trackData)
-      .then(() => {
-        setDoc(newSettingsRef, {
-          id: "global",
-          featuredTrackId: trackId
-        }).catch(async (e) => {
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: newSettingsRef.path,
-            operation: 'create',
-            requestResourceData: { id: "global", featuredTrackId: trackId }
-          }));
-        });
-      })
-      .catch(async (e) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path: newTrackRef.path,
-          operation: 'create',
-          requestResourceData: trackData
-        }));
-      });
+    setDoc(newTrackRef, trackData).catch(e => console.error(e));
+    setDoc(newSettingsRef, { id: "global", featuredTrackId: trackId }).catch(e => console.error(e));
   };
 
   if (loadingSettings || loadingTrack) {
@@ -154,12 +136,9 @@ export default function Home() {
         <div className="w-20 h-20 bg-secondary rounded-full flex items-center justify-center mb-4">
           <Music2 className="h-10 w-10 text-muted-foreground" />
         </div>
-        <h1 className="text-3xl font-headline font-bold">No Featured Track Set</h1>
-        <p className="text-muted-foreground max-w-md">
-          The spotlight is empty! Initialize the database with sample data or add a track in Firestore.
-        </p>
+        <h1 className="text-3xl font-headline font-bold uppercase tracking-tight">TuneSpotlight Empty</h1>
         <Button onClick={initializeData} className="retro-shadow">
-          <Plus className="mr-2 h-4 w-4" /> Initialize Sample Data
+          <Plus className="mr-2 h-4 w-4" /> Setup Initial Data
         </Button>
       </div>
     );
@@ -168,13 +147,11 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-background relative overflow-hidden pb-20">
       <div className="absolute top-0 left-0 w-full h-[500px] bg-gradient-to-b from-primary/20 to-transparent pointer-events-none"></div>
-      <div className="absolute -top-40 -right-40 w-96 h-96 bg-accent/20 rounded-full blur-[120px] pointer-events-none"></div>
-      <div className="absolute top-1/2 -left-40 w-96 h-96 bg-primary/10 rounded-full blur-[120px] pointer-events-none"></div>
-
+      
       <div className="container mx-auto px-6 relative z-10">
         <header className="py-8 flex justify-between items-center">
-          <div className="flex items-center gap-2 group">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center retro-shadow group-hover:rotate-12 transition-transform">
+          <div className="flex items-center gap-2">
+            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center retro-shadow">
               <Disc3 className="text-white h-6 w-6 animate-spin-slow" />
             </div>
             <span className="font-headline text-2xl font-bold tracking-tighter uppercase">TuneSpotlight</span>
@@ -190,11 +167,10 @@ export default function Home() {
         <section className="py-12 md:py-20 flex flex-col items-center text-center space-y-8 max-w-4xl mx-auto">
           <div className="space-y-4">
             <div className="flex items-center justify-center gap-2 text-accent font-mono text-sm tracking-widest uppercase mb-2">
-              <TrendingUp className="h-4 w-4" />
-              Featured Release
+              <TrendingUp className="h-4 w-4" /> Featured Release
             </div>
             <h1 className="text-6xl md:text-8xl font-headline font-bold text-white glow-primary leading-none uppercase">
-              {track.title.split(' ')[0]} <span className="text-primary italic">{track.title.split(' ').slice(1).join(' ')}</span>
+              {track.title}
             </h1>
             <h2 className="text-2xl md:text-3xl font-headline text-muted-foreground tracking-tight uppercase">
               {track.artistName}
@@ -206,10 +182,9 @@ export default function Home() {
                 src="https://picsum.photos/seed/music123/800/800" 
                 alt="Album Cover" 
                 fill 
-                className="object-cover hover:scale-105 transition-transform duration-700"
+                className="object-cover"
                 data-ai-hint="music cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-60"></div>
           </div>
         </section>
 
@@ -218,93 +193,58 @@ export default function Home() {
         </section>
 
         {track.videoUrl && (
-          <section className="py-12 space-y-12">
-             <div className="text-center space-y-4">
-              <h3 className="text-3xl font-headline font-bold flex items-center justify-center gap-3">
-                <Music2 className="text-primary h-8 w-8" />
-                OFFICIAL MUSIC VIDEO
-              </h3>
-              <p className="text-muted-foreground max-w-lg mx-auto">
-                Experience the vision behind the pulse of {track.artistName}.
-              </p>
-            </div>
-            <div className="max-w-5xl mx-auto">
-              <VideoEmbed videoUrl={track.videoUrl} />
-            </div>
+          <section className="py-12 max-w-5xl mx-auto">
+             <VideoEmbed videoUrl={track.videoUrl} />
           </section>
         )}
 
         <LyricsSection track={track} />
-
-        <footer className="mt-20 py-12 border-t border-white/5 text-center text-muted-foreground">
-          <p className="font-headline text-sm tracking-widest uppercase">
-            © {new Date().getFullYear()} TuneSpotlight & {track.artistName}
-          </p>
-          <div className="mt-4 flex justify-center gap-6">
-            <a href="#" className="hover:text-primary transition-colors">Spotify</a>
-            <a href="#" className="hover:text-primary transition-colors">Apple Music</a>
-            <a href="#" className="hover:text-primary transition-colors">Bandcamp</a>
-          </div>
-        </footer>
       </div>
 
       <Dialog open={isAdminOpen} onOpenChange={setIsAdminOpen}>
         <DialogContent className="max-w-2xl music-glass border-primary/20 text-foreground">
           <DialogHeader>
-            <DialogTitle className="text-2xl font-headline font-bold text-primary uppercase">Manage Spotlight</DialogTitle>
-            <DialogDescription className="text-muted-foreground">
-              Update the featured release details. If your song is <code>public/vibe.mp3</code>, simply type <code>/vibe.mp3</code> below. <strong>Do not include "public" in the path.</strong>
-            </DialogDescription>
+            <DialogTitle className="text-2xl font-headline font-bold text-primary uppercase">Spotlight Settings</DialogTitle>
+            <DialogDescription>Configure the featured song and audio path.</DialogDescription>
           </DialogHeader>
+          
+          <Alert className="bg-primary/10 border-primary/30 text-primary-foreground mb-4">
+            <Info className="h-4 w-4" />
+            <AlertTitle className="font-bold uppercase text-xs">Troubleshooting Guide</AlertTitle>
+            <AlertDescription className="text-xs opacity-90">
+              1. Create a folder exactly named <code className="bg-black/40 px-1 rounded">public</code> (lowercase).<br/>
+              2. Put your MP3 inside it.<br/>
+              3. If file is <code className="bg-black/40 px-1 rounded">public/vibes.mp3</code>, the URL below must be <code className="bg-black/40 px-1 rounded">/vibes.mp3</code>.
+            </AlertDescription>
+          </Alert>
+
           <div className="grid gap-6 py-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="title" className="uppercase tracking-widest text-xs">Song Title</Label>
-                <Input 
-                  id="title" 
-                  value={editForm.title} 
-                  onChange={(e) => setEditForm({...editForm, title: e.target.value})}
-                  className="bg-black/20 border-white/10" 
-                />
+                <Label className="uppercase text-xs font-bold opacity-70">Song Title</Label>
+                <Input value={editForm.title} onChange={(e) => setEditForm({...editForm, title: e.target.value})} className="bg-black/20" />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="artist" className="uppercase tracking-widest text-xs">Artist Name</Label>
-                <Input 
-                  id="artist" 
-                  value={editForm.artistName} 
-                  onChange={(e) => setEditForm({...editForm, artistName: e.target.value})}
-                  className="bg-black/20 border-white/10" 
-                />
+                <Label className="uppercase text-xs font-bold opacity-70">Artist</Label>
+                <Input value={editForm.artistName} onChange={(e) => setEditForm({...editForm, artistName: e.target.value})} className="bg-black/20" />
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="audio" className="uppercase tracking-widest text-xs">Audio URL (Link to MP3)</Label>
+              <Label className="uppercase text-xs font-bold opacity-70 text-accent">Audio URL (e.g. /Monks_Tempo.mp3)</Label>
               <Input 
-                id="audio" 
                 value={editForm.audioUrl} 
                 onChange={(e) => setEditForm({...editForm, audioUrl: e.target.value})}
-                placeholder="/mysong.mp3 or https://..."
-                className="bg-black/20 border-white/10" 
+                placeholder="/mysong.mp3"
+                className="bg-black/20 border-accent/30" 
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="video" className="uppercase tracking-widest text-xs">Video Embed URL (Optional)</Label>
-              <Input 
-                id="video" 
-                value={editForm.videoUrl} 
-                onChange={(e) => setEditForm({...editForm, videoUrl: e.target.value})}
-                className="bg-black/20 border-white/10" 
-              />
+              <Label className="uppercase text-xs font-bold opacity-70">Video Link (YouTube/Drive)</Label>
+              <Input value={editForm.videoUrl} onChange={(e) => setEditForm({...editForm, videoUrl: e.target.value})} className="bg-black/20" />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="lyrics" className="uppercase tracking-widest text-xs">Lyrics / Notes</Label>
-              <Textarea 
-                id="lyrics" 
-                value={editForm.lyricsOrNotes} 
-                onChange={(e) => setEditForm({...editForm, lyricsOrNotes: e.target.value})}
-                rows={5}
-                className="bg-black/20 border-white/10" 
-              />
+              <Label className="uppercase text-xs font-bold opacity-70">Lyrics</Label>
+              <Textarea value={editForm.lyricsOrNotes} onChange={(e) => setEditForm({...editForm, lyricsOrNotes: e.target.value})} rows={4} className="bg-black/20" />
             </div>
           </div>
           <DialogFooter>

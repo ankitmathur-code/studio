@@ -2,7 +2,7 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Play, Pause, Repeat, Volume2, VolumeX, SkipBack, SkipForward, AlertCircle } from "lucide-react";
+import { Play, Pause, Repeat, Volume2, VolumeX, SkipBack, SkipForward, AlertCircle, RefreshCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
@@ -38,6 +38,11 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
     setIsPlaying(false);
     setCurrentTime(0);
     setError(null);
+
+    // Force the audio element to reload the new source
+    if (audioRef.current) {
+      audioRef.current.load();
+    }
   }, [track.audioUrl]);
 
   const togglePlay = () => {
@@ -47,7 +52,8 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
         audioRef.current.pause();
       } else {
         audioRef.current.play().catch(e => {
-          setError("Failed to play audio.");
+          console.error("Playback failed:", e);
+          setError("Playback failed. Try refreshing the page.");
           setIsPlaying(false);
         });
       }
@@ -83,12 +89,12 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
   };
 
   const handleAudioError = () => {
-    setError("Could not load audio file. Check the URL path.");
+    setError("Audio file not found or unsupported.");
     setIsPlaying(false);
     toast({
       variant: "destructive",
-      title: "Audio Error",
-      description: `Failed to load ${track.audioUrl}. Make sure the file exists in the public folder and the URL is correct (no '/public' prefix).`,
+      title: "File Not Found",
+      description: `Could not find "${track.audioUrl}". Ensure it's in the lowercase "public" folder and the filename matches exactly (case-sensitive).`,
     });
   };
 
@@ -124,6 +130,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
         onEnded={handleEnded}
         onError={handleAudioError}
         key={track.audioUrl}
+        preload="auto"
       />
 
       <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -185,9 +192,14 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 text-destructive text-sm font-mono bg-destructive/10 p-2 rounded-md">
-          <AlertCircle className="h-4 w-4" />
-          {error}
+        <div className="flex items-center justify-between gap-2 text-destructive text-sm font-mono bg-destructive/10 p-3 rounded-lg border border-destructive/20">
+          <div className="flex items-center gap-2">
+            <AlertCircle className="h-4 w-4 shrink-0" />
+            <span>{error} (Path: <code className="bg-black/20 px-1 rounded">{track.audioUrl}</code>)</span>
+          </div>
+          <Button variant="ghost" size="sm" onClick={() => audioRef.current?.load()} className="h-8 gap-2">
+            <RefreshCcw className="h-3 w-3" /> Retry
+          </Button>
         </div>
       )}
 
