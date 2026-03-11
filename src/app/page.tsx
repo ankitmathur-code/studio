@@ -8,8 +8,8 @@ import { ShareButton } from "@/components/ShareButton";
 import { VideoEmbed } from "@/components/VideoEmbed";
 import { LyricsSection } from "@/components/LyricsSection";
 import { Toaster } from "@/components/ui/toaster";
-import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save, Image as ImageIcon, LayoutGrid, Sparkles, Trophy, Database } from "lucide-react";
-import { useFirestore, useDoc, useCollection, useMemoFirebase, useAuth, useUser, initiateAnonymousSignIn, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
+import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save, Image as ImageIcon, LayoutGrid, Sparkles, Trophy, Database, Trash2 } from "lucide-react";
+import { useFirestore, useDoc, useCollection, useMemoFirebase, useAuth, useUser, initiateAnonymousSignIn, setDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { doc, collection, query, orderBy } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -102,6 +102,15 @@ export default function Home() {
     if (activeTrackRef) {
       updateDocumentNonBlocking(activeTrackRef, form);
       toast({ title: "Track Updated", description: "Changes saved successfully." });
+      setIsAdminOpen(false);
+    }
+  };
+
+  const handleDeleteActiveTrack = () => {
+    if (activeTrackRef) {
+      deleteDocumentNonBlocking(activeTrackRef);
+      toast({ title: "Track Purged", description: "The slop has been removed from the gallery." });
+      setActiveTrackId(null);
       setIsAdminOpen(false);
     }
   };
@@ -314,7 +323,7 @@ export default function Home() {
               {isAdminOpen ? "Manage Spotlight" : "Submit Your Slop"}
             </DialogTitle>
             <DialogDescription>
-              {isAdminOpen ? "Edit the current track details." : "Share your AI creation with the world."}
+              {isAdminOpen ? "Edit or purge the current track." : "Share your AI creation with the world."}
             </DialogDescription>
           </DialogHeader>
           
@@ -367,8 +376,13 @@ export default function Home() {
               <Textarea value={form.linerNotes} onChange={(e) => setForm({...form, linerNotes: e.target.value})} rows={3} className="bg-black/20" placeholder="The story behind this slop..." />
             </div>
           </div>
-          <DialogFooter>
-            <Button onClick={isAdminOpen ? handleUpdateFeatured : handleSubmitNew} className="w-full retro-shadow bg-primary hover:bg-primary/90">
+          <DialogFooter className="flex-col sm:flex-row gap-2">
+            {isAdminOpen && (
+              <Button variant="destructive" onClick={handleDeleteActiveTrack} className="retro-shadow flex-1">
+                <Trash2 className="mr-2 h-4 w-4" /> Delete Track
+              </Button>
+            )}
+            <Button onClick={isAdminOpen ? handleUpdateFeatured : handleSubmitNew} className="retro-shadow bg-primary hover:bg-primary/90 flex-[2]">
               <Save className="mr-2 h-4 w-4" /> {isAdminOpen ? "Save Changes" : "Submit to Gallery"}
             </Button>
           </DialogFooter>
