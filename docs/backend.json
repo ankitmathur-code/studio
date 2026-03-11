@@ -1,0 +1,125 @@
+{
+  "entities": {
+    "Track": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Track",
+      "type": "object",
+      "description": "Represents a single music track with its associated media and information that can be featured in the app.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Track entity."
+        },
+        "title": {
+          "type": "string",
+          "description": "The title of the music track."
+        },
+        "artistName": {
+          "type": "string",
+          "description": "The name of the artist performing the track."
+        },
+        "audioUrl": {
+          "type": "string",
+          "description": "The URL where the main audio file for the track is hosted (e.g., Firebase Storage, CDN).",
+          "format": "uri"
+        },
+        "videoUrl": {
+          "type": "string",
+          "description": "The URL of an embedded music video for the track (e.g., YouTube, Vimeo).",
+          "format": "uri"
+        },
+        "lyricsOrNotes": {
+          "type": "string",
+          "description": "The lyrics of the song or additional notes about the track."
+        },
+        "creationDate": {
+          "type": "string",
+          "description": "The date and time when this track record was created.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "artistName",
+        "audioUrl",
+        "videoUrl",
+        "lyricsOrNotes",
+        "creationDate"
+      ]
+    },
+    "AppSettings": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "AppSettings",
+      "type": "object",
+      "description": "Holds global application settings, specifically which track is currently featured as the default song.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the AppSettings entity. This should typically be a fixed value like 'global-settings' as there should only be one instance."
+        },
+        "featuredTrackId": {
+          "type": "string",
+          "description": "Reference to the Track entity that is currently designated as the default/featured song in the application. (Relationship: AppSettings 1:1 Track)"
+        }
+      },
+      "required": [
+        "id",
+        "featuredTrackId"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/tracks/{trackId}",
+        "definition": {
+          "entityName": "Track",
+          "schema": {
+            "$ref": "#/backend/entities/Track"
+          },
+          "description": "Stores all available music tracks. These tracks are publicly readable (allowing QAPs for discovery), but only administrators can create, update, or delete them. This collection serves as a repository for potential featured songs and includes denormalized 'ownerId' if tracks were user-owned, but here it's system-managed.",
+          "params": [
+            {
+              "name": "trackId",
+              "description": "Unique identifier for a Track document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/appSettings/global",
+        "definition": {
+          "entityName": "AppSettings",
+          "schema": {
+            "$ref": "#/backend/entities/AppSettings"
+          },
+          "description": "Holds global application settings, specifically the ID of the currently featured track. This single document is publicly readable, but only administrators can update it. Its document ID is fixed as 'global'. No denormalization for authorization is needed as it's a top-level document."
+        }
+      },
+      {
+        "path": "/roles_admin/{userId}",
+        "definition": {
+          "entityName": "roles_admin",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "This collection uses the 'Existence over Content' principle for Database Access Control (DBAC). The presence of a document where the ID matches a user's UID grants that user administrative privileges. This enables Authorization Independence for checking admin roles in security rules.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of a user who has been granted administrative privileges."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The proposed Firestore structure prioritizes security, scalability, and debuggability by adhering to the core design principles. The primary entities are `Track` and `AppSettings`, with an additional collection for `roles_admin` to manage administrative privileges.\n\n**Authorization Independence:** This is achieved by avoiding hierarchical authorization dependencies. There are no subcollections whose access depends on data in a parent document. For instance, the `AppSettings` document, which holds the `featuredTrackId`, is a top-level document. Its read/write access is determined solely by its own path and the authenticated user's role (checking `request.auth.uid` against the `/roles_admin` collection), not by performing a `get()` on the `Track` document it references. Similarly, individual `Track` documents are self-contained for authorization purposes; their access doesn't depend on any other document's data. This allows for atomic operations and simplified security rules.\n\n**Support for QAPs (Queries as Authorization Policies):**\n1.  **`/tracks/{trackId}`:** This collection is designed with a homogeneous security posture. All `Track` documents within `/tracks` are publicly readable, which means any user can perform a `list` operation (`query`) on this collection to view all available tracks. For write operations (create, update, delete), access is restricted to authenticated administrators. A security rule would check the existence of `request.auth.uid` in the `/roles_admin` collection, ensuring that administrators can manage the pool of available tracks while maintaining public visibility. This enables secure and efficient querying for both public display and administrative selection.\n2.  **`/appSettings/global`:** This is a single document, not a collection to be listed, so QAPs for listing aren't directly applicable to `appSettings` itself. However, its contents (the `featuredTrackId`) are publicly readable, allowing the application to securely `get()` the default track information without requiring authentication. Updates to this document are restricted to administrators, similar to `/tracks`.\n3.  **`/roles_admin/{userId}`:** This collection supports QAPs implicitly by allowing security rules to efficiently check for the existence of a user's UID to grant administrative privileges for write operations on `/tracks` and `/appSettings`.\n\n**Structural Segregation and Access Modeling:**\n*   **`/tracks`** provides a clear, single source for all music tracks, with uniform public read access and admin write access.\n*   **`/appSettings/global`** isolates global application configurations in a single, predictable location.\n*   **`/roles_admin`** uses the 'Existence over Content' pattern for DBAC, simplifying role checks in security rules to a simple `exists()` call, further enhancing debuggability and clarity of intent. This structure ensures that authorization logic is clear, easy to implement, and robust against common security pitfalls."
+  }
+}

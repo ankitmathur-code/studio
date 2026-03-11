@@ -1,0 +1,92 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * CORE PHILOSOPHY:
+     * This ruleset implements an Administrative Control model. All core content (Tracks and AppSettings) 
+     * is publicly readable to facilitate discovery and application functionality without requiring 
+     * authentication for viewers. However, all write operations (create, update, delete) are 
+     * strictly restricted to users who have been granted administrative privileges.
+     *
+     * DATA STRUCTURE:
+     * - /tracks/{trackId}: A collection of music tracks available in the app.
+     * - /appSettings/global: A singleton document managing the state of the featured track.
+     * - /roles_admin/{userId}: A control collection where the presence of a document grants admin rights.
+     *
+     * KEY SECURITY DECISIONS:
+     * 1. Existence over Content: Administrative roles are determined by the existence of a 
+     *    document in the /roles_admin collection, avoiding complex role string parsing.
+     * 2. Public Readability: Tracks and global settings are open for 'get' and 'list' to support 
+     *    unauthenticated users (e.g., guest discovery).
+     * 3. Immutability of IDs: For relational integrity, we enforce that the 'id' field within 
+     *    a document matches the Firestore document ID and remains unchanged during updates.
+     *
+     * DENORMALIZATION FOR AUTHORIZATION:
+     * Admin status is checked via a global lookup to /roles_admin. No per-document ownership 
+     * (e.g., ownerId) is required on Tracks because the system is managed centrally by admins.
+     */
+
+    // --- Global Helper Functions ---
+
+    /** @description Checks if the request is from an authenticated user. */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /** @description Checks if the authenticated user has a record in the roles_admin collection. */
+    function isAdmin() {
+      return isSignedIn() && exists(/databases/$(database)/documents/roles_admin/$(request.auth.uid));
+    }
+
+    /** @description Verifies that the document exists and the user is an admin for destructive actions. */
+    function isExistingAdmin() {
+      return resource != null && isAdmin();
+    }
+
+    // --- Collection Rules ---
+
+    /**
+     * @description Rules for the collection of music tracks. Publicly viewable, admin-only management.
+     * @path /tracks/{trackId}
+     * @allow (get, list) for any user (unauthenticated or authenticated).
+     * @allow (create, update, delete) for authenticated users with the 'admin' role.
+     * @deny (create, update, delete) for standard users or non-authenticated users.
+     * @principle Public consumption with administrative write isolation.
+     */
+    match /tracks/{trackId} {
+      allow get, list: if true;
+      allow create: if isAdmin() && request.resource.data.id == trackId;
+      allow update: if isExistingAdmin() && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingAdmin();
+    }
+
+    /**
+     * @description Rules for the global application settings. Controls the featured track.
+     * @path /appSettings/global
+     * @allow (get) for any user to fetch the featured track ID.
+     * @allow (update) for administrators to change the featured track.
+     * @deny (create, delete) because the 'global' document should be a permanent singleton.
+     * @principle Singleton configuration protection.
+     */
+    match /appSettings/global {
+      allow get, list: if true;
+      allow update: if isExistingAdmin() && request.resource.data.id == resource.data.id;
+      allow create, delete: if false;
+    }
+
+    /**
+     * @description Rules for the administrative role management collection. 
+     * @path /roles_admin/{userId}
+     * @allow (get) for the user themselves to verify their own administrative status.
+     * @allow (list, create, update, delete) are locked to the Firebase Console or secure Backend SDKs.
+     * @deny (create, update, delete) for all users via client SDKs to prevent privilege escalation.
+     * @principle Authorization Independence via a dedicated administrative registry.
+     */
+    match /roles_admin/{userId} {
+      allow get: if isSignedIn() && request.auth.uid == userId;
+      allow list: if isAdmin();
+      allow create, update, delete: if false;
+    }
+  }
+}
