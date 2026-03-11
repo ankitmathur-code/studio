@@ -130,17 +130,17 @@ export default function Home() {
   };
 
   const initializeData = () => {
-    const trackId = "neon-dreams-001";
+    const trackId = "monks-15-mins";
     const trackData = {
       id: trackId,
-      title: "Neon Dreams",
-      artistName: "The Synth Wave",
-      audioUrl: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3",
-      imageUrl: "https://picsum.photos/seed/music123/800/800",
-      videoUrl: "https://www.youtube.com/embed/dQw4w9WgXcQ",
-      lyricsOrNotes: "In the neon dreams, where the rhythm flows...",
-      linerNotes: "Recorded in a small basement studio.",
-      playCount: 100,
+      title: "15 Mins Of Now",
+      artistName: "Ankit Mathur | The Monks AI Slop",
+      audioUrl: "/Monks_Tempo.mp3",
+      imageUrl: "https://picsum.photos/seed/monks/800/800",
+      videoUrl: "",
+      lyricsOrNotes: "Testing if it blends with the other slops...",
+      linerNotes: "This slop is testing if it blends with the other slops. The clock is always ticking in the world of AI creation.",
+      playCount: 420,
       creationDate: new Date().toISOString()
     };
 
@@ -150,7 +150,7 @@ export default function Home() {
     setDocumentNonBlocking(newTrackRef, trackData, { merge: true });
     setDocumentNonBlocking(newSettingsRef, { id: "global", featuredTrackId: trackId }, { merge: true });
     
-    toast({ title: "Initializing...", description: "Setting up the first vibe." });
+    toast({ title: "Initializing Chart Topper", description: "15 Mins Of Now added with 420 plays!" });
   };
 
   if (isUserLoading || (loadingAll && !allTracks)) {
@@ -210,7 +210,7 @@ export default function Home() {
                   <div className="flex items-center justify-center gap-2 text-accent font-mono text-sm tracking-widest uppercase">
                     <Sparkles className="h-4 w-4" /> Currently Vibing
                   </div>
-                  {activeTrackId === topTrackId && (
+                  {activeTrack.id === topTrackId && (
                     <Badge className="bg-yellow-500 text-black font-bold uppercase tracking-tighter flex items-center gap-1.5 animate-pulse rounded-full px-4 py-1">
                       <Trophy className="h-4 w-4" /> Slop of the Charts
                     </Badge>
@@ -226,7 +226,7 @@ export default function Home() {
 
               <div className={cn(
                 "relative w-full max-w-sm aspect-square rounded-3xl overflow-hidden border-4 transition-all duration-500",
-                activeTrackId === topTrackId ? "retro-shadow border-yellow-500/50 shadow-[0_0_40px_rgba(234,179,8,0.3)]" : "retro-shadow border-primary/20"
+                activeTrack.id === topTrackId ? "retro-shadow border-yellow-500/50 shadow-[0_0_40px_rgba(234,179,8,0.3)]" : "retro-shadow border-primary/20"
               )}>
                  <Image 
                     src={activeTrack.imageUrl || "https://picsum.photos/seed/music123/800/800"} 
