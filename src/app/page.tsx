@@ -8,7 +8,7 @@ import { ShareButton } from "@/components/ShareButton";
 import { VideoEmbed } from "@/components/VideoEmbed";
 import { LyricsSection } from "@/components/LyricsSection";
 import { Toaster } from "@/components/ui/toaster";
-import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save, Image as ImageIcon, LayoutGrid, Sparkles, Trophy, Database, Trash2 } from "lucide-react";
+import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save, Image as ImageIcon, LayoutGrid, Sparkles, Trophy, Database, Trash2, Zap } from "lucide-react";
 import { useFirestore, useDoc, useCollection, useMemoFirebase, useAuth, useUser, initiateAnonymousSignIn, setDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
 import { doc, collection, query, orderBy } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
@@ -260,6 +260,44 @@ export default function Home() {
             <LyricsSection track={activeTrack} />
           </>
         )}
+
+        {/* The Slop Manifesto / About Section */}
+        <section className="py-16 px-6 bg-primary/5 rounded-3xl border border-primary/20 music-glass my-12 text-center space-y-8">
+          <div className="flex justify-center mb-4">
+             <div className="w-16 h-16 bg-accent rounded-full flex items-center justify-center retro-shadow">
+                <Trophy className="h-8 w-8 text-white" />
+             </div>
+          </div>
+          <div className="space-y-4">
+            <h2 className="text-3xl md:text-5xl font-headline font-bold uppercase tracking-tighter">The Quest for the Top Slop</h2>
+            <p className="text-muted-foreground text-lg max-w-2xl mx-auto leading-relaxed">
+              Welcome to <span className="text-primary font-bold">AISlopHits</span>, the premier destination for AI-generated auditory experiments. 
+              Whether it's a neon-soaked synthwave dream or a glitchy experimental artifact, we celebrate the artifacts that define the future of music.
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8 border-t border-white/5">
+            <div className="space-y-3 p-6 rounded-2xl hover:bg-white/5 transition-colors">
+              <Zap className="h-6 w-6 text-accent mx-auto" />
+              <h3 className="font-bold text-accent uppercase tracking-tight">1. Create</h3>
+              <p className="text-sm text-muted-foreground">Fire up your favorite AI model and generate something truly unique.</p>
+            </div>
+            <div className="space-y-3 p-6 rounded-2xl hover:bg-white/5 transition-colors">
+              <Plus className="h-6 w-6 text-accent mx-auto" />
+              <h3 className="font-bold text-accent uppercase tracking-tight">2. Submit</h3>
+              <p className="text-sm text-muted-foreground">Share your track link (YouTube, Drive, or MP3) with the community.</p>
+            </div>
+            <div className="space-y-3 p-6 rounded-2xl hover:bg-white/5 transition-colors">
+              <TrendingUp className="h-6 w-6 text-accent mx-auto" />
+              <h3 className="font-bold text-accent uppercase tracking-tight">3. Conquer</h3>
+              <p className="text-sm text-muted-foreground">The track with the most plays takes the throne. Can you beat the current champ?</p>
+            </div>
+          </div>
+
+          <Button onClick={() => setIsSubmitOpen(true)} className="mt-8 bg-accent hover:bg-accent/90 retro-shadow rounded-full px-10 py-7 text-lg font-bold uppercase">
+            <Plus className="mr-2 h-5 w-5" /> Join the Slop Mine
+          </Button>
+        </section>
 
         <Separator className="my-12 bg-white/5" />
 
