@@ -9,8 +9,8 @@ import { VideoEmbed } from "@/components/VideoEmbed";
 import { LyricsSection } from "@/components/LyricsSection";
 import { Toaster } from "@/components/ui/toaster";
 import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save, Info, Image as ImageIcon } from "lucide-react";
-import { useFirestore, useDoc, useMemoFirebase, useAuth, useUser, initiateAnonymousSignIn } from "@/firebase";
-import { doc, setDoc } from "firebase/firestore";
+import { useFirestore, useDoc, useMemoFirebase, useAuth, useUser, initiateAnonymousSignIn, setDocumentNonBlocking, updateDocumentNonBlocking } from "@/firebase";
+import { doc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -24,21 +24,20 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
 import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
   const firestore = useFirestore();
   const auth = useAuth();
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const { toast } = useToast();
   const [isAdminOpen, setIsAdminOpen] = useState(false);
 
   useEffect(() => {
-    if (!user) {
+    if (!user && !isUserLoading) {
       initiateAnonymousSignIn(auth);
     }
-  }, [user, auth]);
+  }, [user, isUserLoading, auth]);
 
   const settingsRef = useMemoFirebase(() => doc(firestore, "appSettings", "global"), [firestore]);
   const { data: settings, isLoading: loadingSettings } = useDoc(settingsRef);
@@ -98,6 +97,15 @@ export default function Home() {
   };
 
   const initializeData = () => {
+    if (!user) {
+      toast({
+        variant: "destructive",
+        title: "Waiting for connection...",
+        description: "Please wait a moment while we establish a secure connection.",
+      });
+      return;
+    }
+
     const trackId = "neon-dreams-001";
     const trackData = {
       id: trackId,
@@ -114,11 +122,16 @@ export default function Home() {
     const newTrackRef = doc(firestore, "tracks", trackId);
     const newSettingsRef = doc(firestore, "appSettings", "global");
 
-    setDoc(newTrackRef, trackData).catch(e => console.error(e));
-    setDoc(newSettingsRef, { id: "global", featuredTrackId: trackId }).catch(e => console.error(e));
+    setDocumentNonBlocking(newTrackRef, trackData, { merge: true });
+    setDocumentNonBlocking(newSettingsRef, { id: "global", featuredTrackId: trackId }, { merge: true });
+    
+    toast({
+      title: "Initializing...",
+      description: "Setting up your first spotlight track. One moment.",
+    });
   };
 
-  if (loadingSettings || loadingTrack) {
+  if (loadingSettings || loadingTrack || isUserLoading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-12 w-12 text-primary animate-spin" />
@@ -133,6 +146,7 @@ export default function Home() {
           <Music2 className="h-10 w-10 text-muted-foreground" />
         </div>
         <h1 className="text-3xl font-headline font-bold uppercase tracking-tight">TuneSpotlight Empty</h1>
+        <p className="text-muted-foreground max-w-xs">Welcome! Click the button below to seed your first spotlight track and start the vibes.</p>
         <Button onClick={initializeData} className="retro-shadow">
           <Plus className="mr-2 h-4 w-4" /> Setup Initial Data
         </Button>
