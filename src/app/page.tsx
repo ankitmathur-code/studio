@@ -1,20 +1,36 @@
 
 "use client";
 
-import React from "react";
+import React, { useState } from "react";
 import Image from "next/image";
 import { AudioPlayer } from "@/components/AudioPlayer";
 import { ShareButton } from "@/components/ShareButton";
 import { VideoEmbed } from "@/components/VideoEmbed";
 import { LyricsSection } from "@/components/LyricsSection";
 import { Toaster } from "@/components/ui/toaster";
-import { Disc3, Music2, TrendingUp, Loader2, Plus } from "lucide-react";
+import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save } from "lucide-react";
 import { useFirestore, useDoc, useMemoFirebase } from "@/firebase";
 import { doc, setDoc } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Textarea } from "@/components/ui/textarea";
+import { updateDocumentNonBlocking } from "@/firebase/non-blocking-updates";
+import { useToast } from "@/hooks/use-toast";
 
 export default function Home() {
   const firestore = useFirestore();
+  const { toast } = useToast();
+  const [isAdminOpen, setIsAdminOpen] = useState(false);
 
   // 1. Get global settings to find the featured track ID
   const settingsRef = useMemoFirebase(() => doc(firestore, "appSettings", "global"), [firestore]);
@@ -26,6 +42,40 @@ export default function Home() {
     [firestore, settings?.featuredTrackId]
   );
   const { data: track, isLoading: loadingTrack } = useDoc(trackRef);
+
+  // Form State for editing
+  const [editForm, setEditForm] = useState({
+    title: "",
+    artistName: "",
+    audioUrl: "",
+    videoUrl: "",
+    lyricsOrNotes: ""
+  });
+
+  // Initialize form when track loads or dialog opens
+  const openEditDialog = () => {
+    if (track) {
+      setEditForm({
+        title: track.title,
+        artistName: track.artistName,
+        audioUrl: track.audioUrl,
+        videoUrl: track.videoUrl || "",
+        lyricsOrNotes: track.lyricsOrNotes || ""
+      });
+    }
+    setIsAdminOpen(true);
+  };
+
+  const handleSave = () => {
+    if (trackRef) {
+      updateDocumentNonBlocking(trackRef, editForm);
+      toast({
+        title: "Track Updated",
+        description: "The spotlight has been updated with your new details.",
+      });
+      setIsAdminOpen(false);
+    }
+  };
 
   // Helper to initialize sample data if database is empty
   const initializeData = async () => {
@@ -86,7 +136,12 @@ export default function Home() {
             </div>
             <span className="font-headline text-2xl font-bold tracking-tighter uppercase">TuneSpotlight</span>
           </div>
-          <ShareButton />
+          <div className="flex gap-4">
+            <Button variant="ghost" onClick={openEditDialog} className="text-muted-foreground hover:text-primary gap-2">
+              <Settings2 className="h-4 w-4" /> Manage
+            </Button>
+            <ShareButton />
+          </div>
         </header>
 
         <section className="py-12 md:py-20 flex flex-col items-center text-center space-y-8 max-w-4xl mx-auto">
@@ -149,6 +204,74 @@ export default function Home() {
           </div>
         </footer>
       </div>
+
+      <Dialog open={isAdminOpen} onOpenChange={setIsAdminOpen}>
+        <DialogContent className="max-w-2xl music-glass border-primary/20 text-foreground">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-headline font-bold text-primary uppercase">Manage Spotlight</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Update the featured release details. If you uploaded a song to the <strong>public</strong> folder, set the Audio URL to <code>/filename.mp3</code>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-6 py-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="title" className="uppercase tracking-widest text-xs">Song Title</Label>
+                <Input 
+                  id="title" 
+                  value={editForm.title} 
+                  onChange={(e) => setEditForm({...editForm, title: e.target.value})}
+                  className="bg-black/20 border-white/10" 
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="artist" className="uppercase tracking-widest text-xs">Artist Name</Label>
+                <Input 
+                  id="artist" 
+                  value={editForm.artistName} 
+                  onChange={(e) => setEditForm({...editForm, artistName: e.target.value})}
+                  className="bg-black/20 border-white/10" 
+                />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="audio" className="uppercase tracking-widest text-xs">Audio URL (Link to MP3)</Label>
+              <Input 
+                id="audio" 
+                value={editForm.audioUrl} 
+                onChange={(e) => setEditForm({...editForm, audioUrl: e.target.value})}
+                placeholder="/mysong.mp3 or https://..."
+                className="bg-black/20 border-white/10" 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="video" className="uppercase tracking-widest text-xs">Video Embed URL (Optional)</Label>
+              <Input 
+                id="video" 
+                value={editForm.videoUrl} 
+                onChange={(e) => setEditForm({...editForm, videoUrl: e.target.value})}
+                className="bg-black/20 border-white/10" 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="lyrics" className="uppercase tracking-widest text-xs">Lyrics / Notes</Label>
+              <Textarea 
+                id="lyrics" 
+                value={editForm.lyricsOrNotes} 
+                onChange={(e) => setEditForm({...editForm, lyricsOrNotes: e.target.value})}
+                rows={5}
+                className="bg-black/20 border-white/10" 
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button onClick={handleSave} className="w-full retro-shadow bg-primary hover:bg-primary/90">
+              <Save className="mr-2 h-4 w-4" /> Save Spotlight
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Toaster />
     </main>
   );
