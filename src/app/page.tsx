@@ -77,10 +77,26 @@ export default function Home() {
 
   const handleSave = () => {
     if (trackRef) {
-      updateDocumentNonBlocking(trackRef, editForm);
+      // Babysitting: Strip /public/ or /Public/ if entered by mistake
+      // Users often think they need to include the folder name in the URL.
+      let cleanedUrl = editForm.audioUrl.trim();
+      if (cleanedUrl.toLowerCase().startsWith("/public/")) {
+        cleanedUrl = cleanedUrl.substring(7); // remove /public
+      } else if (cleanedUrl.toLowerCase().startsWith("public/")) {
+        cleanedUrl = "/" + cleanedUrl.substring(7); // change public/ to /
+      }
+
+      // Ensure it starts with a slash if it's a local file
+      if (!cleanedUrl.startsWith("http") && !cleanedUrl.startsWith("/")) {
+        cleanedUrl = "/" + cleanedUrl;
+      }
+
+      const finalData = { ...editForm, audioUrl: cleanedUrl };
+
+      updateDocumentNonBlocking(trackRef, finalData);
       toast({
         title: "Track Updated",
-        description: "The spotlight has been updated with your new details.",
+        description: `The spotlight is now set to ${cleanedUrl}.`,
       });
       setIsAdminOpen(false);
     }
@@ -102,7 +118,6 @@ export default function Home() {
     const newTrackRef = doc(firestore, "tracks", trackId);
     const newSettingsRef = doc(firestore, "appSettings", "global");
 
-    // We initiate the writes. If they fail due to permissions, the ErrorListener will catch it.
     setDoc(newTrackRef, trackData)
       .then(() => {
         setDoc(newSettingsRef, {
@@ -238,7 +253,7 @@ export default function Home() {
           <DialogHeader>
             <DialogTitle className="text-2xl font-headline font-bold text-primary uppercase">Manage Spotlight</DialogTitle>
             <DialogDescription className="text-muted-foreground">
-              Update the featured release details. If you uploaded a song to the <strong>public</strong> folder, set the Audio URL to <code>/filename.mp3</code>.
+              Update the featured release details. If your song is <code>public/vibe.mp3</code>, simply type <code>/vibe.mp3</code> below. <strong>Do not include "public" in the path.</strong>
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-6 py-4">

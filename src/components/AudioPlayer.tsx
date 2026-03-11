@@ -2,11 +2,12 @@
 "use client";
 
 import React, { useState, useRef, useEffect } from "react";
-import { Play, Pause, Repeat, Volume2, VolumeX, SkipBack, SkipForward } from "lucide-react";
+import { Play, Pause, Repeat, Volume2, VolumeX, SkipBack, SkipForward, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
 
 interface AudioPlayerProps {
   track: {
@@ -24,8 +25,10 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
   const [volume, setVolume] = useState(80);
   const [isMuted, setIsMuted] = useState(false);
   const [sessionCount, setSessionCount] = useState(0);
+  const [error, setError] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
+  const { toast } = useToast();
 
   useEffect(() => {
     const stored = sessionStorage.getItem("tuneSpotlightPlays");
@@ -34,14 +37,19 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
     // Reset player when track changes
     setIsPlaying(false);
     setCurrentTime(0);
+    setError(null);
   }, [track.audioUrl]);
 
   const togglePlay = () => {
+    if (error) return;
     if (audioRef.current) {
       if (isPlaying) {
         audioRef.current.pause();
       } else {
-        audioRef.current.play();
+        audioRef.current.play().catch(e => {
+          setError("Failed to play audio.");
+          setIsPlaying(false);
+        });
       }
       setIsPlaying(!isPlaying);
     }
@@ -63,6 +71,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
   const handleLoadedMetadata = () => {
     if (audioRef.current) {
       setDuration(audioRef.current.duration);
+      setError(null);
     }
   };
 
@@ -71,6 +80,16 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
     const newCount = sessionCount + 1;
     setSessionCount(newCount);
     sessionStorage.setItem("tuneSpotlightPlays", newCount.toString());
+  };
+
+  const handleAudioError = () => {
+    setError("Could not load audio file. Check the URL path.");
+    setIsPlaying(false);
+    toast({
+      variant: "destructive",
+      title: "Audio Error",
+      description: `Failed to load ${track.audioUrl}. Make sure the file exists in the public folder and the URL is correct (no '/public' prefix).`,
+    });
   };
 
   const handleSeek = (val: number[]) => {
@@ -103,6 +122,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
         onEnded={handleEnded}
+        onError={handleAudioError}
         key={track.audioUrl}
       />
 
@@ -127,7 +147,11 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
           <Button
             size="icon"
             onClick={togglePlay}
-            className="h-14 w-14 rounded-full bg-primary hover:bg-primary/90 text-white retro-shadow transition-transform active:scale-95"
+            disabled={!!error}
+            className={cn(
+              "h-14 w-14 rounded-full text-white retro-shadow transition-transform active:scale-95",
+              error ? "bg-muted cursor-not-allowed" : "bg-primary hover:bg-primary/90"
+            )}
           >
             {isPlaying ? <Pause className="h-7 w-7" /> : <Play className="h-7 w-7 ml-1" />}
           </Button>
@@ -159,6 +183,13 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
           </Badge>
         </div>
       </div>
+
+      {error && (
+        <div className="flex items-center gap-2 text-destructive text-sm font-mono bg-destructive/10 p-2 rounded-md">
+          <AlertCircle className="h-4 w-4" />
+          {error}
+        </div>
+      )}
 
       <div className="space-y-2">
         <Slider
