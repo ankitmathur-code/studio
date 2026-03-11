@@ -1,20 +1,24 @@
 
-# AISlopHits Starter
+# AISlopHits v1.0.0
 
-Welcome to your music discovery app!
+Welcome to the ultimate AI Music Discovery platform!
 
-## How to add your own music
+## Version 1.0.0 Features
+- **Featured Spotlight**: Highlight the absolute best slop of the week.
+- **Community Submissions**: Anyone can add their tracks via the "Submit Track" button.
+- **Multi-Source Support**: Paste links from Google Drive, YouTube, or direct MP3 URLs.
 
-1. **Create a `public` folder**: Click the "New Folder" icon at the top of the sidebar (the folder icon with a `+` sign) and name it `public`.
-2. **Upload your MP3**: Drag and drop your `.mp3` file from your computer directly into that new `public` folder in the sidebar. **IMPORTANT**: Keep the filename simple, like `song.mp3`.
-3. **Set the Spotlight**:
-   - Open your app in the preview window.
-   - Click the **"Manage"** button in the top right of the page.
-   - In the **Audio URL** field, type `/your-filename.mp3` (for example: if your file is named `vibe.mp3`, type `/vibe.mp3`).
-   - **CRITICAL**: Do NOT include "public" in the URL. If your file is in `public/vibe.mp3`, the URL is just `/vibe.mp3`.
+## How to add your own music (Developer)
+1. **Local Files**: Create a `public` folder and drop your `.mp3` files there. Reference them as `/filename.mp3`.
+2. **External Links**: Use the "Submit" or "Manage" buttons to paste links from Google Drive or other hosting services.
+
+## Google Drive Tip
+When sharing from Google Drive:
+1. Right-click the file -> Share -> Anyone with the link can view.
+2. Copy the link.
+3. Paste it into AISlopHits. The app will automatically try to handle the "view" vs "preview" conversion for you.
 
 ## App Structure
-
-- `src/app/page.tsx`: The main landing page showing the featured song.
+- `src/app/page.tsx`: The main hub showing the spotlight and the full track list.
 - `src/components/AudioPlayer.tsx`: The custom music player.
-- `firestore.rules`: Security settings for your database.
+- `src/components/TrackCard.tsx`: Small preview cards for the gallery.

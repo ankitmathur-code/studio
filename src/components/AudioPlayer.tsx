@@ -24,47 +24,43 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
   const [currentTime, setCurrentTime] = useState(0);
   const [volume, setVolume] = useState(80);
   const [isMuted, setIsMuted] = useState(false);
-  const [sessionCount, setSessionCount] = useState(0);
   const [error, setError] = useState<string | null>(null);
 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const { toast } = useToast();
 
+  // Handle Google Drive links
+  const getCleanAudioUrl = (url: string) => {
+    if (url.includes("drive.google.com")) {
+      // Convert view link to a direct-ish stream link if possible, 
+      // though browser support varies for Drive audio embedding.
+      // Best approach for Drive is the /view -> /preview swap
+      return url.replace("/view", "/preview");
+    }
+    return url;
+  };
+
   useEffect(() => {
-    const stored = sessionStorage.getItem("aiSlopHitsPlays");
-    if (stored) setSessionCount(parseInt(stored));
-    
-    // Reset player when track changes
     setIsPlaying(false);
     setCurrentTime(0);
     setError(null);
-
-    // Force the audio element to reload the new source
     if (audioRef.current) {
       audioRef.current.load();
     }
   }, [track.audioUrl]);
 
   const togglePlay = () => {
-    if (error) return;
     if (audioRef.current) {
       if (isPlaying) {
         audioRef.current.pause();
       } else {
         audioRef.current.play().catch(e => {
           console.error("Playback failed:", e);
-          setError("Playback failed. Try refreshing the page.");
+          setError("Playback failed. If using Google Drive, ensure link is set to 'Anyone with the link'.");
           setIsPlaying(false);
         });
       }
       setIsPlaying(!isPlaying);
-    }
-  };
-
-  const toggleLoop = () => {
-    setIsLooping(!isLooping);
-    if (audioRef.current) {
-      audioRef.current.loop = !isLooping;
     }
   };
 
@@ -81,21 +77,9 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
     }
   };
 
-  const handleEnded = () => {
-    setIsPlaying(false);
-    const newCount = sessionCount + 1;
-    setSessionCount(newCount);
-    sessionStorage.setItem("aiSlopHitsPlays", newCount.toString());
-  };
-
   const handleAudioError = () => {
-    setError("Audio file not found or unsupported.");
+    setError("Audio could not be loaded.");
     setIsPlaying(false);
-    toast({
-      variant: "destructive",
-      title: "File Not Found",
-      description: `Could not find "${track.audioUrl}". Ensure it's in the lowercase "public" folder and the filename matches exactly (case-sensitive).`,
-    });
   };
 
   const handleSeek = (val: number[]) => {
@@ -103,15 +87,6 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
       audioRef.current.currentTime = val[0];
       setCurrentTime(val[0]);
     }
-  };
-
-  const handleVolumeChange = (val: number[]) => {
-    setVolume(val[0]);
-    if (audioRef.current) {
-      audioRef.current.volume = val[0] / 100;
-    }
-    if (val[0] === 0) setIsMuted(true);
-    else setIsMuted(false);
   };
 
   const formatTime = (time: number) => {
@@ -124,46 +99,42 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
     <div className="w-full max-w-4xl mx-auto p-6 music-glass rounded-2xl shadow-2xl space-y-6">
       <audio
         ref={audioRef}
-        src={track.audioUrl}
+        src={getCleanAudioUrl(track.audioUrl)}
         onTimeUpdate={handleTimeUpdate}
         onLoadedMetadata={handleLoadedMetadata}
-        onEnded={handleEnded}
+        onEnded={() => setIsPlaying(false)}
         onError={handleAudioError}
         key={track.audioUrl}
         preload="auto"
       />
 
       <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="flex flex-col items-center md:items-start">
-          <h3 className="text-xl font-headline font-bold text-primary glow-primary uppercase tracking-tight">{track.title}</h3>
-          <p className="text-muted-foreground uppercase text-sm tracking-widest">{track.artistName}</p>
+        <div className="flex flex-col items-center md:items-start max-w-xs">
+          <h3 className="text-xl font-headline font-bold text-primary truncate w-full uppercase tracking-tight">{track.title}</h3>
+          <p className="text-muted-foreground uppercase text-sm tracking-widest truncate w-full">{track.artistName}</p>
         </div>
 
         <div className="flex items-center gap-4">
           <Button
             variant="ghost"
             size="icon"
-            onClick={toggleLoop}
+            onClick={() => {
+              setIsLooping(!isLooping);
+              if (audioRef.current) audioRef.current.loop = !isLooping;
+            }}
             className={cn("rounded-full", isLooping && "text-accent bg-accent/10")}
           >
             <Repeat className="h-5 w-5" />
           </Button>
-          <Button variant="ghost" size="icon" className="rounded-full hidden sm:flex">
-            <SkipBack className="h-5 w-5" />
-          </Button>
           <Button
             size="icon"
             onClick={togglePlay}
-            disabled={!!error}
             className={cn(
               "h-14 w-14 rounded-full text-white retro-shadow transition-transform active:scale-95",
               error ? "bg-muted cursor-not-allowed" : "bg-primary hover:bg-primary/90"
             )}
           >
             {isPlaying ? <Pause className="h-7 w-7" /> : <Play className="h-7 w-7 ml-1" />}
-          </Button>
-          <Button variant="ghost" size="icon" className="rounded-full hidden sm:flex">
-            <SkipForward className="h-5 w-5" />
           </Button>
           <div className="flex items-center gap-2 group w-32 ml-4">
             <Button
@@ -178,15 +149,18 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
               value={[isMuted ? 0 : volume]}
               max={100}
               step={1}
-              onValueChange={handleVolumeChange}
+              onValueChange={(v) => {
+                setVolume(v[0]);
+                if (audioRef.current) audioRef.current.volume = v[0] / 100;
+              }}
               className="w-full"
             />
           </div>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="hidden md:block">
            <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 font-mono">
-            {sessionCount} PLAYS THIS SESSION
+            V1.0.0 ENGINE
           </Badge>
         </div>
       </div>
@@ -195,7 +169,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
         <div className="flex items-center justify-between gap-2 text-destructive text-sm font-mono bg-destructive/10 p-3 rounded-lg border border-destructive/20">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>{error} (Path: <code className="bg-black/20 px-1 rounded">{track.audioUrl}</code>)</span>
+            <span>{error}</span>
           </div>
           <Button variant="ghost" size="sm" onClick={() => audioRef.current?.load()} className="h-8 gap-2">
             <RefreshCcw className="h-3 w-3" /> Retry
