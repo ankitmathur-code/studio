@@ -8,8 +8,33 @@ import { ShareButton } from "@/components/ShareButton";
 import { VideoEmbed } from "@/components/VideoEmbed";
 import { LyricsSection } from "@/components/LyricsSection";
 import { Toaster } from "@/components/ui/toaster";
-import { Disc3, Music2, TrendingUp, Loader2, Plus, Settings2, Save, Image as ImageIcon, LayoutGrid, Sparkles, Trophy, Trash2, Zap } from "lucide-react";
-import { useFirestore, useDoc, useCollection, useMemoFirebase, useAuth, useUser, initiateAnonymousSignIn, setDocumentNonBlocking, updateDocumentNonBlocking, deleteDocumentNonBlocking } from "@/firebase";
+import { 
+  Disc3, 
+  Music2, 
+  TrendingUp, 
+  Loader2, 
+  Plus, 
+  Settings2, 
+  Save, 
+  Image as ImageIcon, 
+  LayoutGrid, 
+  Sparkles, 
+  Trophy, 
+  Trash2, 
+  Zap 
+} from "lucide-react";
+import { 
+  useFirestore, 
+  useDoc, 
+  useCollection, 
+  useMemoFirebase, 
+  useAuth, 
+  useUser, 
+  initiateAnonymousSignIn, 
+  setDocumentNonBlocking, 
+  updateDocumentNonBlocking, 
+  deleteDocumentNonBlocking 
+} from "@/firebase";
 import { doc, collection, query, orderBy } from "firebase/firestore";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -294,9 +319,11 @@ export default function Home() {
             </div>
           </div>
 
-          <Button onClick={() => setIsSubmitOpen(true)} className="mt-8 bg-accent hover:bg-accent/90 retro-shadow rounded-full px-10 py-7 text-lg font-bold uppercase">
-            <Plus className="mr-2 h-5 w-5" /> Join the Slop Mine
-          </Button>
+          <div className="pt-4">
+            <Button onClick={() => setIsSubmitOpen(true)} className="bg-accent hover:bg-accent/90 retro-shadow rounded-full px-10 py-7 text-lg font-bold uppercase">
+              <Plus className="mr-2 h-5 w-5" /> Join the Slop Mine
+            </Button>
+          </div>
         </section>
 
         <Separator className="my-12 bg-white/5" />
@@ -354,7 +381,7 @@ export default function Home() {
       </div>
 
       {/* Admin/Submit Modal */}
-      <Dialog open={isAdminOpen || isSubmitOpen} onOpenChange={(val) => { setIsAdminOpen(false); setIsSubmitOpen(false); }}>
+      <Dialog open={isAdminOpen || isSubmitOpen} onOpenChange={(val) => { if(!val) { setIsAdminOpen(false); setIsSubmitOpen(false); } }}>
         <DialogContent className="max-w-2xl music-glass border-primary/20 text-foreground overflow-y-auto max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="text-2xl font-headline font-bold text-primary uppercase">
