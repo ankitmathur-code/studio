@@ -173,7 +173,7 @@ export default function Home() {
         getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
           setForm((prev) => ({ ...prev, audioUrl: downloadURL }));
           setUploadProgress(null);
-          toast({ title: "Upload Complete", description: "Audio file is ready!" });
+          toast({ title: "Upload Complete", description: "Audio URL (fallback) has been updated automatically." });
         });
       }
     );
