@@ -155,6 +155,7 @@ export default function Home() {
       return;
     }
 
+    // Files are stored in the 'audio/' directory with a timestamp to prevent collisions
     const storageRef = ref(storage, `audio/${Date.now()}_${file.name}`);
     const uploadTask = uploadBytesResumable(storageRef, file);
 
@@ -173,7 +174,7 @@ export default function Home() {
         getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
           setForm((prev) => ({ ...prev, audioUrl: downloadURL }));
           setUploadProgress(null);
-          toast({ title: "Upload Complete", description: "Audio URL (fallback) has been updated automatically." });
+          toast({ title: "Upload Complete", description: "Audio URL has been updated automatically." });
         });
       }
     );
