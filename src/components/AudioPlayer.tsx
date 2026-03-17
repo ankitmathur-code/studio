@@ -48,21 +48,21 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
     if (!url) return "";
     let cleanUrl = url.trim();
     
+    // Handle local files
     if (cleanUrl.toLowerCase().startsWith("/public/")) {
       return cleanUrl.substring(7);
     }
 
-    // Advanced Google Drive handling
+    // High-compatibility Google Drive handler
+    // Browsers often block drive.google.com direct streams due to security policies.
+    // docs.google.com/uc?export=download is generally more permissive for <audio> elements.
     if (cleanUrl.includes("drive.google.com")) {
-      // Extracts ID from /file/d/ID/view, /d/ID/edit, or ?id=ID
       const idMatch = cleanUrl.match(/\/d\/([^\/\?#]+)/) || cleanUrl.match(/[?&]id=([^&#]+)/);
-      // Extracts resourcekey if present
       const resourceKeyMatch = cleanUrl.match(/[?&]resourcekey=([^&#]+)/);
 
       if (idMatch && idMatch[1]) {
-        // The /uc?id=... endpoint is the standard for raw audio stream access.
-        // We include export=download to force the stream and confirm=t to bypass large file warnings.
-        let baseUrl = `https://drive.google.com/uc?id=${idMatch[1]}&export=download&confirm=t`;
+        // We use docs.google.com which has better CORS/stream support for native audio tags
+        let baseUrl = `https://docs.google.com/uc?id=${idMatch[1]}&export=download&confirm=t`;
         
         if (resourceKeyMatch && resourceKeyMatch[1]) {
           baseUrl += `&resourcekey=${resourceKeyMatch[1]}`;
@@ -85,7 +85,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
         if (playPromise !== undefined) {
           playPromise.catch(e => {
             console.error("Playback failed:", e);
-            setError("Playback failed. This usually happens if the Google Drive link is expired or permission is restricted.");
+            setError("Playback failed. This usually happens if the Google Drive link is restricted or requires login.");
             setIsPlaying(false);
           });
         }
@@ -115,7 +115,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
 
   const handleAudioError = () => {
     if (audioRef.current?.src) {
-      setError("The audio source is not supported or accessible. Check sharing permissions.");
+      setError("The audio source is not accessible via a custom player. Try checking 'Anyone with the link' settings.");
       setIsPlaying(false);
     }
   };
@@ -128,6 +128,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
   };
 
   const formatTime = (time: number) => {
+    if (isNaN(time)) return "0:00";
     const minutes = Math.floor(time / 60);
     const seconds = Math.floor(time % 60);
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
@@ -144,6 +145,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
         onError={handleAudioError}
         key={track.audioUrl}
         preload="auto"
+        crossOrigin="anonymous"
       />
 
       <div className="flex flex-col md:flex-row items-center justify-between gap-6">
@@ -219,17 +221,26 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
       </div>
 
       {error && (
-        <div className="flex items-center justify-between gap-2 text-destructive text-sm font-mono bg-destructive/10 p-3 rounded-lg border border-destructive/20">
+        <div className="flex flex-col gap-3 p-4 rounded-lg bg-destructive/10 border border-destructive/20 text-destructive text-sm">
           <div className="flex items-center gap-2">
             <AlertCircle className="h-4 w-4 shrink-0" />
-            <span>{error}</span>
+            <span className="font-mono">{error}</span>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => {
-            setError(null);
-            audioRef.current?.load();
-          }} className="h-8 gap-2">
-            <RefreshCcw className="h-3 w-3" /> Retry
-          </Button>
+          <div className="flex gap-2">
+             <Button variant="ghost" size="sm" onClick={() => {
+              setError(null);
+              audioRef.current?.load();
+            }} className="h-8 gap-2 border border-destructive/20 hover:bg-destructive/10">
+              <RefreshCcw className="h-3 w-3" /> Retry
+            </Button>
+            {track.audioUrl.includes("drive.google.com") && (
+              <Button asChild variant="link" size="sm" className="h-8 text-destructive underline decoration-dotted">
+                <a href={track.audioUrl} target="_blank" rel="noopener noreferrer">
+                  Open Direct in Drive
+                </a>
+              </Button>
+            )}
+          </div>
         </div>
       )}
 
