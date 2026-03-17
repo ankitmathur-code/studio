@@ -49,9 +49,17 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
   const isGoogleDrive = track.audioUrl.includes("drive.google.com");
 
   const getDriveEmbedUrl = (url: string) => {
+    if (!url) return "";
     const idMatch = url.match(/\/d\/([^\/\?#]+)/) || url.match(/[?&]id=([^&#]+)/);
+    const resourceKeyMatch = url.match(/[?&]resourcekey=([^&#]+)/);
+    
     if (idMatch && idMatch[1]) {
-      return `https://drive.google.com/file/d/${idMatch[1]}/preview`;
+      let baseUrl = `https://drive.google.com/file/d/${idMatch[1]}/preview`;
+      if (resourceKeyMatch && resourceKeyMatch[1]) {
+        // Ensure the resourcekey is passed to the preview iframe
+        baseUrl += `?resourcekey=${resourceKeyMatch[1]}`;
+      }
+      return baseUrl;
     }
     return url;
   };
@@ -69,6 +77,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
       const resourceKeyMatch = cleanUrl.match(/[?&]resourcekey=([^&#]+)/);
 
       if (idMatch && idMatch[1]) {
+        // Direct download endpoint with resourcekey support
         let baseUrl = `https://docs.google.com/uc?id=${idMatch[1]}&export=download&confirm=t`;
         if (resourceKeyMatch && resourceKeyMatch[1]) {
           baseUrl += `&resourcekey=${resourceKeyMatch[1]}`;
@@ -90,7 +99,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
         if (playPromise !== undefined) {
           playPromise.catch(e => {
             console.error("Playback failed:", e);
-            setError("Playback failed. If using Google Drive, try the Embed Player below.");
+            setError("Playback failed. If using Google Drive, ensure the file is shared with 'Anyone with the link'.");
             setIsPlaying(false);
           });
         }
@@ -120,7 +129,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
 
   const handleAudioError = () => {
     if (audioRef.current?.src) {
-      setError("This audio source is not supported by native players. Try the Embed Player.");
+      setError("Audio could not be loaded. Check the URL path or sharing permissions.");
       setIsPlaying(false);
     }
   };

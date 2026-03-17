@@ -8,8 +8,17 @@ interface VideoEmbedProps {
 }
 
 export function VideoEmbed({ videoUrl }: VideoEmbedProps) {
-  // Simple conversion for shared drive links or normal links
-  const embedUrl = videoUrl.includes("view") ? videoUrl.replace("view", "preview") : videoUrl;
+  // Enhanced conversion to preserve resourcekey for restricted files
+  const getEmbedUrl = (url: string) => {
+    if (!url) return "";
+    let embedUrl = url;
+    if (url.includes("view")) {
+      embedUrl = url.replace("view", "preview");
+    }
+    return embedUrl;
+  };
+
+  const embedUrl = getEmbedUrl(videoUrl);
 
   return (
     <div className="relative w-full aspect-video rounded-3xl overflow-hidden music-glass border-primary/20 shadow-2xl group animate-fade-in opacity-0" style={{ animationDelay: '0.4s' }}>
