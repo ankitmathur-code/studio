@@ -53,17 +53,18 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
       return cleanUrl.substring(7);
     }
 
-    // Improved Google Drive handling with resourcekey support
+    // Advanced Google Drive handling for direct streaming
     if (cleanUrl.includes("drive.google.com")) {
-      // Handles /file/d/ID/view, /d/ID/edit, or ?id=ID patterns
-      const idMatch = cleanUrl.match(/\/d\/([^\/\?]+)/) || cleanUrl.match(/[?&]id=([^&]+)/);
-      const resourceKeyMatch = cleanUrl.match(/[?&]resourcekey=([^&]+)/);
+      // Extracts ID from /file/d/ID/view, /d/ID/edit, or ?id=ID
+      const idMatch = cleanUrl.match(/\/d\/([^\/\?#]+)/) || cleanUrl.match(/[?&]id=([^&#]+)/);
+      // Extracts resourcekey if present (required for some workspace files)
+      const resourceKeyMatch = cleanUrl.match(/[?&]resourcekey=([^&#]+)/);
 
       if (idMatch && idMatch[1]) {
-        // Use export=open for better streaming compatibility
-        let baseUrl = `https://docs.google.com/uc?export=open&id=${idMatch[1]}`;
+        // export=download is often more reliable for raw audio tags than export=open
+        // &confirm=t bypasses the "this file is too large to scan for viruses" prompt for many files
+        let baseUrl = `https://docs.google.com/uc?export=download&id=${idMatch[1]}&confirm=t`;
         
-        // Append resourcekey if it exists (required for some shared files)
         if (resourceKeyMatch && resourceKeyMatch[1]) {
           baseUrl += `&resourcekey=${resourceKeyMatch[1]}`;
         }
@@ -111,8 +112,11 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
   };
 
   const handleAudioError = () => {
-    setError("Audio could not be loaded. Check the URL path or sharing permissions.");
-    setIsPlaying(false);
+    // Only show error if the src is not empty (prevents initial load flicker)
+    if (audioRef.current?.src) {
+      setError("Audio could not be loaded. Check the URL path or sharing permissions.");
+      setIsPlaying(false);
+    }
   };
 
   const handleSeek = (val: number[]) => {
@@ -204,7 +208,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
 
         <div className="hidden md:flex flex-col items-end gap-1">
           <Badge variant="secondary" className="bg-primary/10 text-primary border-primary/20 font-mono">
-            V1.1.0 ANALYTICS
+            LIVE STATS
           </Badge>
           <div className="flex items-center gap-1.5 text-xs text-muted-foreground font-mono uppercase">
             <BarChart3 className="h-3 w-3" />
@@ -219,7 +223,10 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
             <AlertCircle className="h-4 w-4 shrink-0" />
             <span>{error}</span>
           </div>
-          <Button variant="ghost" size="sm" onClick={() => audioRef.current?.load()} className="h-8 gap-2">
+          <Button variant="ghost" size="sm" onClick={() => {
+            setError(null);
+            audioRef.current?.load();
+          }} className="h-8 gap-2">
             <RefreshCcw className="h-3 w-3" /> Retry
           </Button>
         </div>
