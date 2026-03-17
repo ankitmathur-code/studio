@@ -53,12 +53,22 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
       return cleanUrl.substring(7);
     }
 
-    // Improved Google Drive handling
+    // Improved Google Drive handling with resourcekey support
     if (cleanUrl.includes("drive.google.com")) {
       // Handles /file/d/ID/view, /d/ID/edit, or ?id=ID patterns
       const idMatch = cleanUrl.match(/\/d\/([^\/\?]+)/) || cleanUrl.match(/[?&]id=([^&]+)/);
+      const resourceKeyMatch = cleanUrl.match(/[?&]resourcekey=([^&]+)/);
+
       if (idMatch && idMatch[1]) {
-        return `https://docs.google.com/uc?export=download&id=${idMatch[1]}`;
+        // Use export=open for better streaming compatibility
+        let baseUrl = `https://docs.google.com/uc?export=open&id=${idMatch[1]}`;
+        
+        // Append resourcekey if it exists (required for some shared files)
+        if (resourceKeyMatch && resourceKeyMatch[1]) {
+          baseUrl += `&resourcekey=${resourceKeyMatch[1]}`;
+        }
+        
+        return baseUrl;
       }
     }
     
