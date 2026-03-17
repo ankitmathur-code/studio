@@ -1,4 +1,3 @@
-
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -21,7 +20,9 @@ import {
   Sparkles, 
   Trophy, 
   Trash2, 
-  Zap 
+  Zap,
+  Upload,
+  CheckCircle2
 } from "lucide-react";
 import { 
   useFirestore, 
@@ -30,12 +31,14 @@ import {
   useMemoFirebase, 
   useAuth, 
   useUser, 
+  useStorage,
   initiateAnonymousSignIn, 
   setDocumentNonBlocking, 
   updateDocumentNonBlocking, 
   deleteDocumentNonBlocking 
 } from "@/firebase";
 import { doc, collection, query, orderBy } from "firebase/firestore";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -52,15 +55,18 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 
 export default function Home() {
   const firestore = useFirestore();
   const auth = useAuth();
+  const storage = useStorage();
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
   
   const [isAdminOpen, setIsAdminOpen] = useState(false);
   const [isSubmitOpen, setIsSubmitOpen] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
 
   useEffect(() => {
     if (!user && !isUserLoading) {
@@ -140,9 +146,42 @@ export default function Home() {
     }
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!user) {
+      toast({ variant: "destructive", title: "Auth Required", description: "Please wait for anonymous sign-in." });
+      return;
+    }
+
+    const storageRef = ref(storage, `audio/${Date.now()}_${file.name}`);
+    const uploadTask = uploadBytesResumable(storageRef, file);
+
+    uploadTask.on(
+      "state_changed",
+      (snapshot) => {
+        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+        setUploadProgress(progress);
+      },
+      (error) => {
+        console.error("Upload failed:", error);
+        toast({ variant: "destructive", title: "Upload Failed", description: error.message });
+        setUploadProgress(null);
+      },
+      () => {
+        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
+          setForm((prev) => ({ ...prev, audioUrl: downloadURL }));
+          setUploadProgress(null);
+          toast({ title: "Upload Complete", description: "Audio file is ready!" });
+        });
+      }
+    );
+  };
+
   const handleSubmitNew = () => {
     if (!form.title || !form.artistName || !form.audioUrl) {
-      toast({ variant: "destructive", title: "Missing Info", description: "Please provide a title, artist, and audio link." });
+      toast({ variant: "destructive", title: "Missing Info", description: "Please provide a title, artist, and audio link/file." });
       return;
     }
 
@@ -381,7 +420,7 @@ export default function Home() {
       </div>
 
       {/* Admin/Submit Modal */}
-      <Dialog open={isAdminOpen || isSubmitOpen} onOpenChange={(val) => { if(!val) { setIsAdminOpen(false); setIsSubmitOpen(false); } }}>
+      <Dialog open={isAdminOpen || isSubmitOpen} onOpenChange={(val) => { if(!val) { setIsAdminOpen(false); setIsSubmitOpen(false); setUploadProgress(null); } }}>
         <DialogContent className="max-w-2xl music-glass border-primary/20 text-foreground overflow-y-auto max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="text-2xl font-headline font-bold text-primary uppercase">
@@ -404,10 +443,28 @@ export default function Home() {
               </div>
             </div>
             
+            <div className="space-y-4 p-4 border border-white/10 rounded-xl bg-white/5">
+              <Label className="uppercase text-xs font-bold opacity-70 flex items-center gap-2">
+                <Upload className="h-3 w-3" /> Upload Audio File
+              </Label>
+              <div className="flex items-center gap-4">
+                <Input type="file" accept="audio/*" onChange={handleFileUpload} className="bg-black/20 border-accent/30 flex-1" />
+                {form.audioUrl && !uploadProgress && (
+                   <CheckCircle2 className="h-6 w-6 text-green-500 shrink-0" />
+                )}
+              </div>
+              {uploadProgress !== null && (
+                <div className="space-y-2">
+                  <Progress value={uploadProgress} className="h-2" />
+                  <p className="text-[10px] font-mono uppercase text-muted-foreground text-center">Uploading: {Math.round(uploadProgress)}%</p>
+                </div>
+              )}
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="uppercase text-xs font-bold opacity-70 text-accent flex items-center gap-2">
-                  <Music2 className="h-3 w-3" /> Audio URL
+                  <Music2 className="h-3 w-3" /> Audio URL (Fallback)
                 </Label>
                 <Input value={form.audioUrl} onChange={(e) => setForm({...form, audioUrl: e.target.value})} placeholder="Direct link or Drive link" className="bg-black/20 border-accent/30" />
               </div>
@@ -435,7 +492,7 @@ export default function Home() {
                 <Trash2 className="mr-2 h-4 w-4" /> Delete Track
               </Button>
             )}
-            <Button onClick={isAdminOpen ? handleUpdateFeatured : handleSubmitNew} className="retro-shadow bg-primary hover:bg-primary/90 flex-[2]">
+            <Button onClick={isAdminOpen ? handleUpdateFeatured : handleSubmitNew} disabled={uploadProgress !== null} className="retro-shadow bg-primary hover:bg-primary/90 flex-[2]">
               <Save className="mr-2 h-4 w-4" /> {isAdminOpen ? "Save Changes" : "Submit to Gallery"}
             </Button>
           </DialogFooter>
