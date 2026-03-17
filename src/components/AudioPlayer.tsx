@@ -47,15 +47,21 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
   const getCleanAudioUrl = (url: string) => {
     if (!url) return "";
     let cleanUrl = url.trim();
+    
+    // Handle local public folder refs
     if (cleanUrl.toLowerCase().startsWith("/public/")) {
-      cleanUrl = cleanUrl.substring(7);
+      return cleanUrl.substring(7);
     }
+
+    // Improved Google Drive handling
     if (cleanUrl.includes("drive.google.com")) {
-      const match = cleanUrl.match(/\/d\/(.+?)\//) || cleanUrl.match(/id=(.+?)(&|$)/);
-      if (match && match[1]) {
-        return `https://drive.google.com/uc?export=open&id=${match[1]}`;
+      // Handles /file/d/ID/view, /d/ID/edit, or ?id=ID patterns
+      const idMatch = cleanUrl.match(/\/d\/([^\/\?]+)/) || cleanUrl.match(/[?&]id=([^&]+)/);
+      if (idMatch && idMatch[1]) {
+        return `https://docs.google.com/uc?export=download&id=${idMatch[1]}`;
       }
     }
+    
     return cleanUrl;
   };
 
@@ -66,7 +72,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
       } else {
         audioRef.current.play().catch(e => {
           console.error("Playback failed:", e);
-          setError("Playback failed. Check the URL or file permissions.");
+          setError("Playback failed. If using Google Drive, ensure the file is shared with 'Anyone with the link'.");
           setIsPlaying(false);
         });
 
@@ -95,7 +101,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
   };
 
   const handleAudioError = () => {
-    setError("Audio could not be loaded. Check the URL path.");
+    setError("Audio could not be loaded. Check the URL path or sharing permissions.");
     setIsPlaying(false);
   };
 
@@ -126,7 +132,7 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
       />
 
       <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-        <div className="flex flex-col items-center md:items-start max-w-xs">
+        <div className="flex flex-col items-center md:items-start max-w-xs overflow-hidden">
           <h3 className="text-xl font-headline font-bold text-primary truncate w-full uppercase tracking-tight">{track.title}</h3>
           <p className="text-muted-foreground uppercase text-sm tracking-widest truncate w-full">{track.artistName}</p>
         </div>
@@ -136,8 +142,9 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
             variant="ghost"
             size="icon"
             onClick={() => {
-              setIsLooping(!isLooping);
-              if (audioRef.current) audioRef.current.loop = !isLooping;
+              const newLoop = !isLooping;
+              setIsLooping(newLoop);
+              if (audioRef.current) audioRef.current.loop = newLoop;
             }}
             className={cn("rounded-full", isLooping && "text-accent bg-accent/10")}
           >
@@ -157,7 +164,11 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => setIsMuted(!isMuted)}
+              onClick={() => {
+                const newMute = !isMuted;
+                setIsMuted(newMute);
+                if (audioRef.current) audioRef.current.muted = newMute;
+              }}
               className="rounded-full shrink-0"
             >
               {isMuted ? <VolumeX className="h-5 w-5" /> : <Volume2 className="h-5 w-5" />}
@@ -168,7 +179,13 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
               step={1}
               onValueChange={(v) => {
                 setVolume(v[0]);
-                if (audioRef.current) audioRef.current.volume = v[0] / 100;
+                if (audioRef.current) {
+                  audioRef.current.volume = v[0] / 100;
+                  if (v[0] > 0) {
+                    setIsMuted(false);
+                    audioRef.current.muted = false;
+                  }
+                }
               }}
               className="w-full"
             />

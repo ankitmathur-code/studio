@@ -260,7 +260,7 @@ export default function Home() {
               </div>
 
               <div className={cn(
-                "relative w-full max-w-sm aspect-square rounded-3xl overflow-hidden border-4 transition-all duration-500",
+                "relative w-full max-sm aspect-square rounded-3xl overflow-hidden border-4 transition-all duration-500 max-w-sm",
                 activeTrack.id === topTrackId ? "retro-shadow border-yellow-500/50 shadow-[0_0_40px_rgba(234,179,8,0.3)]" : "retro-shadow border-primary/20"
               )}>
                  <Image 
@@ -365,13 +365,13 @@ export default function Home() {
                     </div>
                   )}
                 </div>
-                <div>
+                <div className="overflow-hidden">
                   <h4 className="font-bold truncate group-hover:text-primary transition-colors flex items-center gap-1.5">
                     {t.title}
                   </h4>
-                  <p className="text-sm text-muted-foreground truncate uppercase flex justify-between">
-                    <span>{t.artistName}</span>
-                    <span className="font-mono text-[10px] opacity-60">{t.playCount || 0} PLAYS</span>
+                  <p className="text-sm text-muted-foreground truncate uppercase flex justify-between gap-2">
+                    <span className="truncate">{t.artistName}</span>
+                    <span className="font-mono text-[10px] opacity-60 shrink-0">{t.playCount || 0} PLAYS</span>
                   </p>
                 </div>
               </div>
@@ -393,7 +393,7 @@ export default function Home() {
           </DialogHeader>
           
           <div className="grid gap-6 py-4">
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label className="uppercase text-xs font-bold opacity-70">Song Title</Label>
                 <Input value={form.title} onChange={(e) => setForm({...form, title: e.target.value})} className="bg-black/20" placeholder="Neon Dreams" />
