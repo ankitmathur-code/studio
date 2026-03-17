@@ -48,22 +48,21 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
     if (!url) return "";
     let cleanUrl = url.trim();
     
-    // Handle local public folder refs
     if (cleanUrl.toLowerCase().startsWith("/public/")) {
       return cleanUrl.substring(7);
     }
 
-    // Advanced Google Drive handling for direct streaming
+    // Advanced Google Drive handling
     if (cleanUrl.includes("drive.google.com")) {
       // Extracts ID from /file/d/ID/view, /d/ID/edit, or ?id=ID
       const idMatch = cleanUrl.match(/\/d\/([^\/\?#]+)/) || cleanUrl.match(/[?&]id=([^&#]+)/);
-      // Extracts resourcekey if present (required for some workspace files)
+      // Extracts resourcekey if present
       const resourceKeyMatch = cleanUrl.match(/[?&]resourcekey=([^&#]+)/);
 
       if (idMatch && idMatch[1]) {
-        // export=download is often more reliable for raw audio tags than export=open
-        // &confirm=t bypasses the "this file is too large to scan for viruses" prompt for many files
-        let baseUrl = `https://docs.google.com/uc?export=download&id=${idMatch[1]}&confirm=t`;
+        // The /uc?id=... endpoint is the standard for raw audio stream access.
+        // We include export=download to force the stream and confirm=t to bypass large file warnings.
+        let baseUrl = `https://drive.google.com/uc?id=${idMatch[1]}&export=download&confirm=t`;
         
         if (resourceKeyMatch && resourceKeyMatch[1]) {
           baseUrl += `&resourcekey=${resourceKeyMatch[1]}`;
@@ -81,13 +80,16 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
       if (isPlaying) {
         audioRef.current.pause();
       } else {
-        audioRef.current.play().catch(e => {
-          console.error("Playback failed:", e);
-          setError("Playback failed. If using Google Drive, ensure the file is shared with 'Anyone with the link'.");
-          setIsPlaying(false);
-        });
+        const playPromise = audioRef.current.play();
+        
+        if (playPromise !== undefined) {
+          playPromise.catch(e => {
+            console.error("Playback failed:", e);
+            setError("Playback failed. This usually happens if the Google Drive link is expired or permission is restricted.");
+            setIsPlaying(false);
+          });
+        }
 
-        // Increment play count only once per track load
         if (!hasIncremented && track.id) {
           const trackRef = doc(firestore, "tracks", track.id);
           incrementPlayCountNonBlocking(trackRef);
@@ -112,9 +114,8 @@ export function AudioPlayer({ track }: AudioPlayerProps) {
   };
 
   const handleAudioError = () => {
-    // Only show error if the src is not empty (prevents initial load flicker)
     if (audioRef.current?.src) {
-      setError("Audio could not be loaded. Check the URL path or sharing permissions.");
+      setError("The audio source is not supported or accessible. Check sharing permissions.");
       setIsPlaying(false);
     }
   };

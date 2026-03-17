@@ -169,7 +169,7 @@ export default function Home() {
       id: trackId,
       title: "15 Mins Of Now",
       artistName: "Ankit Mathur | The Monks AI Slop",
-      audioUrl: "https://drive.google.com/uc?export=open&id=1O-FEBu4tJ86qc-217dssVADOP2oas8FV",
+      audioUrl: "https://drive.google.com/uc?id=1O-FEBu4tJ86qc-217dssVADOP2oas8FV&export=download",
       imageUrl: "https://picsum.photos/seed/monks/800/800",
       videoUrl: "",
       lyricsOrNotes: "Testing if it blends with the other slops...",
