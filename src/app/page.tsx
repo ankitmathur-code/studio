@@ -1,3 +1,4 @@
+
 "use client";
 
 import React, { useState, useEffect } from "react";
@@ -31,14 +32,12 @@ import {
   useMemoFirebase, 
   useAuth, 
   useUser, 
-  useStorage,
   initiateAnonymousSignIn, 
   setDocumentNonBlocking, 
   updateDocumentNonBlocking, 
   deleteDocumentNonBlocking 
 } from "@/firebase";
 import { doc, collection, query, orderBy } from "firebase/firestore";
-import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import {
@@ -56,11 +55,11 @@ import { useToast } from "@/hooks/use-toast";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { uploadFileAction } from "@/app/actions/upload-action";
 
 export default function Home() {
   const firestore = useFirestore();
   const auth = useAuth();
-  const storage = useStorage();
   const { user, isUserLoading } = useUser();
   const { toast } = useToast();
   
@@ -146,38 +145,38 @@ export default function Home() {
     }
   };
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    if (!user) {
-      toast({ variant: "destructive", title: "Auth Required", description: "Please wait for anonymous sign-in." });
-      return;
-    }
+    setUploadProgress(10);
+    const formData = new FormData();
+    formData.append('file', file);
 
-    // Files are stored in the 'audio/' directory with a timestamp to prevent collisions
-    const storageRef = ref(storage, `audio/${Date.now()}_${file.name}`);
-    const uploadTask = uploadBytesResumable(storageRef, file);
-
-    uploadTask.on(
-      "state_changed",
-      (snapshot) => {
-        const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
-        setUploadProgress(progress);
-      },
-      (error) => {
-        console.error("Upload failed:", error);
-        toast({ variant: "destructive", title: "Upload Failed", description: error.message });
-        setUploadProgress(null);
-      },
-      () => {
-        getDownloadURL(uploadTask.snapshot.ref).then((downloadURL) => {
-          setForm((prev) => ({ ...prev, audioUrl: downloadURL }));
-          setUploadProgress(null);
-          toast({ title: "Upload Complete", description: "Audio URL has been updated automatically." });
+    try {
+      setUploadProgress(40);
+      const result = await uploadFileAction(formData);
+      
+      if (result.success && result.url) {
+        setUploadProgress(100);
+        setForm((prev) => ({ ...prev, audioUrl: result.url! }));
+        toast({ 
+          title: "Upload Complete", 
+          description: "File saved to your public/uploads directory." 
         });
+        setTimeout(() => setUploadProgress(null), 1000);
+      } else {
+        throw new Error(result.error || "Failed to save file");
       }
-    );
+    } catch (error: any) {
+      console.error("Upload failed:", error);
+      toast({ 
+        variant: "destructive", 
+        title: "Upload Failed", 
+        description: error.message 
+      });
+      setUploadProgress(null);
+    }
   };
 
   const handleSubmitNew = () => {
@@ -446,7 +445,7 @@ export default function Home() {
             
             <div className="space-y-4 p-4 border border-white/10 rounded-xl bg-white/5">
               <Label className="uppercase text-xs font-bold opacity-70 flex items-center gap-2">
-                <Upload className="h-3 w-3" /> Upload Audio File
+                <Upload className="h-3 w-3" /> Upload Audio File (to local public/uploads)
               </Label>
               <div className="flex items-center gap-4">
                 <Input type="file" accept="audio/*" onChange={handleFileUpload} className="bg-black/20 border-accent/30 flex-1" />
@@ -457,7 +456,7 @@ export default function Home() {
               {uploadProgress !== null && (
                 <div className="space-y-2">
                   <Progress value={uploadProgress} className="h-2" />
-                  <p className="text-[10px] font-mono uppercase text-muted-foreground text-center">Uploading: {Math.round(uploadProgress)}%</p>
+                  <p className="text-[10px] font-mono uppercase text-muted-foreground text-center">Processing: {Math.round(uploadProgress)}%</p>
                 </div>
               )}
             </div>
